@@ -118,7 +118,9 @@ fn build_router(state: AppState) -> Router {
 
     let oauth_callbacks = routes::auth::callback_router();
 
-    let admin = routes::tenants::router().merge(routes::clients::router());
+    let admin = routes::tenants::router()
+        .merge(routes::clients::router())
+        .merge(routes::admin_users::router());
 
     let well_known_router = Router::new()
         .route("/.well-known/openid-configuration", get(well_known::discovery))

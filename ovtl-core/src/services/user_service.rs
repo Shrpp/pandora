@@ -47,3 +47,24 @@ pub async fn email_lookup_exists(
 ) -> Result<bool, AppError> {
     Ok(find_by_email_lookup(txn, lookup).await?.is_some())
 }
+
+pub async fn list_all(
+    txn: &DatabaseTransaction,
+) -> Result<Vec<users::Model>, AppError> {
+    Ok(users::Entity::find().all(txn).await?)
+}
+
+pub async fn deactivate(
+    txn: &DatabaseTransaction,
+    id: Uuid,
+) -> Result<(), AppError> {
+    use sea_orm::Set;
+    let user = users::Entity::find_by_id(id)
+        .one(txn)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let mut active: users::ActiveModel = user.into();
+    active.is_active = Set(false);
+    active.update(txn).await?;
+    Ok(())
+}
