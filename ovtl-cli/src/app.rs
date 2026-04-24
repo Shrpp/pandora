@@ -1,22 +1,24 @@
-use crate::api::{Client, OAuthClient, Tenant};
+use crate::api::{Client, OAuthClient, Tenant, User};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Screen {
-    Tenants,
+pub enum Tab {
     Clients,
+    Users,
     Health,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Focus {
+    Sidebar,
+    Content,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Modal {
     None,
     CreateTenant { name: String, slug: String, field: usize },
-    CreateClient {
-        name: String,
-        redirect_uri: String,
-        scopes: String,
-        field: usize,
-    },
+    CreateClient { name: String, redirect_uri: String, scopes: String, field: usize },
+    CreateUser { email: String, password: String, field: usize },
     ConfirmDelete { id: String, label: String },
     ShowSecret { client_id: String, secret: String },
     Error(String),
@@ -24,22 +26,27 @@ pub enum Modal {
 
 pub struct App {
     pub client: Client,
-    pub screen: Screen,
+    pub focus: Focus,
+    pub tab: Tab,
     pub modal: Modal,
 
-    // Tenants screen
     pub tenants: Vec<Tenant>,
     pub tenant_selected: usize,
     pub tenants_loading: bool,
 
-    // Clients screen (scoped to selected tenant)
     pub clients: Vec<OAuthClient>,
     pub client_selected: usize,
     pub clients_loading: bool,
+
+    pub users: Vec<User>,
+    pub user_selected: usize,
+    pub users_loading: bool,
+
     pub active_tenant_id: Option<String>,
 
-    // Health
     pub health_status: Option<String>,
+    pub health_version: Option<String>,
+    pub health_error: Option<String>,
 
     pub status_msg: Option<String>,
     pub should_quit: bool,
@@ -49,7 +56,8 @@ impl App {
     pub fn new(client: Client) -> Self {
         Self {
             client,
-            screen: Screen::Tenants,
+            focus: Focus::Sidebar,
+            tab: Tab::Clients,
             modal: Modal::None,
 
             tenants: vec![],
@@ -59,9 +67,16 @@ impl App {
             clients: vec![],
             client_selected: 0,
             clients_loading: false,
+
+            users: vec![],
+            user_selected: 0,
+            users_loading: false,
+
             active_tenant_id: None,
 
             health_status: None,
+            health_version: None,
+            health_error: None,
 
             status_msg: None,
             should_quit: false,
@@ -76,6 +91,10 @@ impl App {
         self.clients.get(self.client_selected)
     }
 
+    pub fn selected_user(&self) -> Option<&User> {
+        self.users.get(self.user_selected)
+    }
+
     pub fn set_status(&mut self, msg: impl Into<String>) {
         self.status_msg = Some(msg.into());
     }
@@ -84,35 +103,9 @@ impl App {
         self.status_msg = None;
     }
 
-    pub fn nav_up(&mut self) {
-        match self.screen {
-            Screen::Tenants => {
-                if self.tenant_selected > 0 {
-                    self.tenant_selected -= 1;
-                }
-            }
-            Screen::Clients => {
-                if self.client_selected > 0 {
-                    self.client_selected -= 1;
-                }
-            }
-            _ => {}
-        }
-    }
-
-    pub fn nav_down(&mut self) {
-        match self.screen {
-            Screen::Tenants => {
-                if self.tenant_selected + 1 < self.tenants.len() {
-                    self.tenant_selected += 1;
-                }
-            }
-            Screen::Clients => {
-                if self.client_selected + 1 < self.clients.len() {
-                    self.client_selected += 1;
-                }
-            }
-            _ => {}
-        }
+    pub fn active_tenant_name(&self) -> Option<&str> {
+        self.tenants
+            .get(self.tenant_selected)
+            .map(|t| t.name.as_str())
     }
 }

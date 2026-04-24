@@ -7,8 +7,6 @@ use uuid::Uuid;
 
 use crate::{error::AppError, services::tenant_service, state::AppState};
 
-const TENANT_HEADER: &str = "x-ovtl-tenant-id";
-
 #[derive(Clone, Debug)]
 pub struct TenantContext {
     pub tenant_id: Uuid,
@@ -21,16 +19,23 @@ pub async fn tenant_middleware(
     mut req: Request,
     next: Next,
 ) -> Result<Response, AppError> {
-    let tenant_id = req
-        .headers()
-        .get(TENANT_HEADER)
+    let headers = req.headers();
+
+    let record = if let Some(id_val) = headers
+        .get("x-ovtl-tenant-id")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| Uuid::parse_str(s).ok())
-        .ok_or(AppError::Unauthorized)?;
+    {
+        tenant_service::find_active(&state.db, id_val).await?
+    } else if let Some(slug) = headers
+        .get("x-ovtl-tenant-slug")
+        .and_then(|v| v.to_str().ok())
+    {
+        tenant_service::find_active_by_slug(&state.db, slug).await?
+    } else {
+        return Err(AppError::Unauthorized);
+    };
 
-    let record = tenant_service::find_active(&state.db, tenant_id).await?;
-
-    // Tenant key is double-envelope encrypted: inner key = TENANT_WRAP_KEY, outer = MASTER_ENCRYPTION_KEY.
     let tenant_key = hefesto::decrypt(
         &record.encryption_key_encrypted,
         &state.config.tenant_wrap_key,
@@ -38,7 +43,7 @@ pub async fn tenant_middleware(
     )?;
 
     req.extensions_mut().insert(TenantContext {
-        tenant_id,
+        tenant_id: record.id,
         tenant_key,
     });
 

@@ -142,7 +142,53 @@ impl Client {
         }
     }
 
-    // ── Audit log (reads from API if endpoint available) ─────────────────────
+    // ── Users ─────────────────────────────────────────────────────────────────
+
+    pub async fn list_users(&self, tenant_id: &str) -> ApiResult<Vec<User>> {
+        let resp = self
+            .inner
+            .get(format!("{}/users", self.base_url))
+            .headers(self.tenant_headers(tenant_id))
+            .send()
+            .await?;
+        self.check(resp).await
+    }
+
+    pub async fn create_user(
+        &self,
+        tenant_id: &str,
+        email: &str,
+        password: &str,
+    ) -> ApiResult<User> {
+        let resp = self
+            .inner
+            .post(format!("{}/users", self.base_url))
+            .headers(self.tenant_headers(tenant_id))
+            .json(&serde_json::json!({ "email": email, "password": password }))
+            .send()
+            .await?;
+        self.check(resp).await
+    }
+
+    pub async fn deactivate_user(&self, tenant_id: &str, id: &str) -> ApiResult<()> {
+        let resp = self
+            .inner
+            .delete(format!("{}/users/{}", self.base_url, id))
+            .headers(self.tenant_headers(tenant_id))
+            .send()
+            .await?;
+        let status = resp.status();
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "deactivate failed".into(),
+            })
+        }
+    }
+
+    // ── Health ────────────────────────────────────────────────────────────────
 
     pub async fn health(&self) -> ApiResult<serde_json::Value> {
         let resp = self
@@ -162,6 +208,14 @@ pub struct Tenant {
     pub name: String,
     pub slug: String,
     pub plan: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct User {
+    pub id: String,
+    pub email: String,
+    pub is_active: bool,
     pub created_at: String,
 }
 
