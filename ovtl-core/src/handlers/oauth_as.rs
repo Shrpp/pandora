@@ -265,14 +265,41 @@ async fn token_authorization_code(state: AppState, req: TokenRequest) -> Result<
         .await
         .unwrap_or_default();
 
+    let client_role_names = role_service::list_client_role_names_for_user(
+        &txn, user.id, client.id, tenant_id,
+    )
+    .await
+    .unwrap_or_default();
+
+    let resource_access = if !client_role_names.is_empty() {
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            client.client_id.clone(),
+            token_service::RealmAccess { roles: client_role_names, permissions: vec![] },
+        );
+        map
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    let access_ttl = client
+        .access_token_ttl_minutes
+        .map(|t| t as i64)
+        .unwrap_or(state.config.jwt_expiration_minutes);
+    let refresh_ttl = client
+        .refresh_token_ttl_days
+        .map(|t| t as i64)
+        .unwrap_or(state.config.refresh_token_expiration_days);
+
     let access_token = token_service::generate_access_token(
         user.id,
         tenant_id,
         &email_plain,
         roles,
         permissions,
+        resource_access,
         &state.config.jwt_secret,
-        state.config.jwt_expiration_minutes,
+        access_ttl,
     )?;
 
     let refresh_token = token_service::generate_refresh_token();
@@ -282,7 +309,7 @@ async fn token_authorization_code(state: AppState, req: TokenRequest) -> Result<
         tenant_id,
         user.id,
         token_hash,
-        state.config.refresh_token_expiration_days,
+        refresh_ttl,
     )
     .await?;
 
@@ -295,7 +322,7 @@ async fn token_authorization_code(state: AppState, req: TokenRequest) -> Result<
         sub: user.id.to_string(),
         aud: req.client_id.clone(),
         iat: Utc::now().timestamp(),
-        exp: Utc::now().timestamp() + 3600,
+        exp: Utc::now().timestamp() + access_ttl * 60,
         email: email_plain,
         nonce: auth_code.nonce,
     };
@@ -310,7 +337,7 @@ async fn token_authorization_code(state: AppState, req: TokenRequest) -> Result<
         refresh_token: Some(refresh_token),
         id_token: Some(id_token),
         token_type: "Bearer",
-        expires_in: state.config.jwt_expiration_minutes * 60,
+        expires_in: access_ttl * 60,
         scope: scope_str,
     }))
 }
@@ -348,12 +375,17 @@ async fn token_client_credentials(state: AppState, req: TokenRequest) -> Result<
         .collect();
 
     // 5. Issue access token (no user context, sub = client_id).
+    let access_ttl = client
+        .access_token_ttl_minutes
+        .map(|t| t as i64)
+        .unwrap_or(state.config.jwt_expiration_minutes);
+
     let access_token = token_service::generate_client_access_token(
         &client.client_id,
         client.tenant_id,
         &final_scopes,
         &state.config.jwt_secret,
-        state.config.jwt_expiration_minutes,
+        access_ttl,
     )?;
 
     Ok(Json(TokenResponse {
@@ -361,7 +393,7 @@ async fn token_client_credentials(state: AppState, req: TokenRequest) -> Result<
         refresh_token: None,
         id_token: None,
         token_type: "Bearer",
-        expires_in: state.config.jwt_expiration_minutes * 60,
+        expires_in: access_ttl * 60,
         scope: final_scopes.join(" "),
     }))
 }

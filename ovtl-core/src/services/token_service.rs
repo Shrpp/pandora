@@ -6,6 +6,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::{entity::{refresh_tokens, revoked_jtis}, error::AppError};
@@ -28,6 +29,9 @@ pub struct Claims {
     pub exp: i64,
     #[serde(default)]
     pub realm_access: RealmAccess,
+    /// Keycloak-compatible per-client roles: `{ "<client_id>": { "roles": [...] } }`
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub resource_access: HashMap<String, RealmAccess>,
 }
 
 pub fn generate_access_token(
@@ -36,6 +40,7 @@ pub fn generate_access_token(
     email: &str,
     roles: Vec<String>,
     permissions: Vec<String>,
+    resource_access: HashMap<String, RealmAccess>,
     secret: &str,
     expiration_minutes: i64,
 ) -> Result<String, AppError> {
@@ -48,6 +53,7 @@ pub fn generate_access_token(
         iat: now,
         exp: now + expiration_minutes * 60,
         realm_access: RealmAccess { roles, permissions },
+        resource_access,
     };
     encode(
         &Header::default(),

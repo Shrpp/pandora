@@ -143,7 +143,8 @@ fn build_router(state: AppState) -> Router {
         .merge(routes::admin_users::router())
         .merge(routes::admin_sessions::router())
         .merge(routes::admin_roles::router())
-        .merge(routes::admin_permissions::router());
+        .merge(routes::admin_permissions::router())
+        .merge(routes::admin_identity_providers::router());
 
     let well_known_router = Router::new()
         .route("/.well-known/openid-configuration", get(well_known::discovery))

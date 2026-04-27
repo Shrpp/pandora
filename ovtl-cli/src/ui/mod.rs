@@ -1,5 +1,6 @@
 pub mod clients;
 pub mod health;
+pub mod identity_providers;
 pub mod layout;
 pub mod login;
 pub mod permissions;

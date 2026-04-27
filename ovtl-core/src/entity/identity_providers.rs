@@ -2,29 +2,23 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "oauth_clients")]
+#[sea_orm(table_name = "identity_providers")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub tenant_id: Uuid,
-    #[sea_orm(column_type = "Text", unique)]
+    #[sea_orm(column_type = "Text")]
+    pub provider: String,
+    #[sea_orm(column_type = "Text")]
     pub client_id: String,
     #[sea_orm(column_type = "Text")]
-    pub client_secret: String,
+    pub client_secret_enc: String,
     #[sea_orm(column_type = "Text")]
-    pub name: String,
-    #[sea_orm(column_type = "Json")]
-    pub redirect_uris: serde_json::Value,
-    #[sea_orm(column_type = "Json")]
-    pub grant_types: serde_json::Value,
+    pub redirect_url: String,
     #[sea_orm(column_type = "Json")]
     pub scopes: serde_json::Value,
-    pub is_confidential: bool,
-    pub require_consent: bool,
-    pub is_active: bool,
+    pub enabled: bool,
     pub created_at: DateTimeWithTimeZone,
-    pub access_token_ttl_minutes: Option<i32>,
-    pub refresh_token_ttl_days: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

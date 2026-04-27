@@ -125,6 +125,7 @@ pub async fn login(
         &email_plain,
         roles,
         permissions,
+        std::collections::HashMap::new(),
         &state.config.jwt_secret,
         settings.access_token_ttl_minutes,
     )?;

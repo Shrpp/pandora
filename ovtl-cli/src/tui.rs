@@ -36,6 +36,7 @@ pub async fn run(mut app: App) -> io::Result<()> {
 
     let mut client_table = StatefulTable::new();
     let mut user_table = StatefulTable::new();
+    let mut idp_table = StatefulTable::new();
     let mut session_list_state = ratatui::widgets::ListState::default();
     let mut role_list_state = ratatui::widgets::ListState::default();
     let mut permission_list_state = ratatui::widgets::ListState::default();
@@ -61,6 +62,7 @@ pub async fn run(mut app: App) -> io::Result<()> {
                 Tab::Permissions => ui::permissions::render(frame, &app, content_body, &mut permission_list_state),
                 Tab::Sessions => ui::sessions::render(frame, &app, content_body, &mut session_list_state),
                 Tab::Settings => ui::settings::render(frame, &app, content_body),
+                Tab::IdentityProviders => ui::identity_providers::render(frame, &app, content_body, &mut idp_table),
             }
 
             let hints: Vec<(&str, &str)> = match app.focus {
@@ -122,6 +124,15 @@ pub async fn run(mut app: App) -> io::Result<()> {
                         ("Enter", "Save"),
                         ("q", "Quit"),
                     ],
+                    Tab::IdentityProviders => vec![
+                        ("Esc", "Back"),
+                        ("←→", "Switch tab"),
+                        ("↑↓", "Navigate"),
+                        ("n", "New"),
+                        ("e", "Edit"),
+                        ("d", "Delete"),
+                        ("q", "Quit"),
+                    ],
                 },
             };
 
@@ -139,7 +150,10 @@ pub async fn run(mut app: App) -> io::Result<()> {
                     modal::render_error(frame, msg);
                 }
                 Modal::CreateTenant { name, slug, field } => {
-                    modal::render_form(frame, "New Tenant", &[("Name", name), ("Slug", slug)], *field);
+                    modal::render_form(frame, "New Tenant", &[
+                        ("Name", name, "e.g. Acme Corp"),
+                        ("Slug", slug, "e.g. acme (URL-safe, unique)"),
+                    ], *field);
                 }
                 Modal::CreateClient { name, redirect_uri, scopes, client_type, field } => {
                     modal::render_create_client(frame, name, redirect_uri, scopes, *client_type, *field);
@@ -148,18 +162,45 @@ pub async fn run(mut app: App) -> io::Result<()> {
                     modal::render_form(
                         frame,
                         "New User",
-                        &[("Email", email), ("Password", password)],
+                        &[
+                            ("Email", email, "user@example.com"),
+                            ("Password", password, "min 8 characters"),
+                        ],
                         *field,
                     );
                 }
                 Modal::QuickStart(_) => {
                     ui::quickstart::render(frame, &app);
                 }
-                Modal::EditClient { name, redirect_uris, scopes, field, .. } => {
+                Modal::EditClient { name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, client_type, field, .. } => {
+                    modal::render_edit_client(frame, name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, *client_type, *field);
+                }
+                Modal::CreateIdp { provider, client_id, client_secret, redirect_url, scopes, field } => {
                     modal::render_form(
                         frame,
-                        "Edit Client",
-                        &[("Name", name), ("Redirect URIs", redirect_uris), ("Scopes", scopes)],
+                        "New Identity Provider",
+                        &[
+                            ("Provider", provider, "google  or  github"),
+                            ("Client ID", client_id, "OAuth app Client ID from provider console"),
+                            ("Client Secret", client_secret, "OAuth app Client Secret from provider console"),
+                            ("Redirect URL", redirect_url, "https://your-domain/auth/callback/google"),
+                            ("Scopes", scopes, "email profile  (space-separated)"),
+                        ],
+                        *field,
+                    );
+                }
+                Modal::EditIdp { provider, client_id, client_secret, redirect_url, scopes, enabled, field, .. } => {
+                    let enabled_str = if *enabled { "true" } else { "false" };
+                    modal::render_form(
+                        frame,
+                        &format!("Edit Identity Provider — {provider}"),
+                        &[
+                            ("Client ID", client_id, "OAuth app Client ID from provider console"),
+                            ("Client Secret", client_secret, "blank = keep existing secret"),
+                            ("Redirect URL", redirect_url, "https://your-domain/auth/callback/google"),
+                            ("Scopes", scopes, "email profile  (space-separated)"),
+                            ("Enabled", enabled_str, "Space to toggle"),
+                        ],
                         *field,
                     );
                 }
@@ -170,7 +211,10 @@ pub async fn run(mut app: App) -> io::Result<()> {
                     modal::render_form(
                         frame,
                         "New Role",
-                        &[("Name", name), ("Description", description)],
+                        &[
+                            ("Name", name, "e.g. admin, editor, viewer"),
+                            ("Description", description, "optional description"),
+                        ],
                         *field,
                     );
                 }
@@ -181,7 +225,10 @@ pub async fn run(mut app: App) -> io::Result<()> {
                     modal::render_form(
                         frame,
                         "New Permission",
-                        &[("Name", name), ("Description", description)],
+                        &[
+                            ("Name", name, "e.g. documents:read"),
+                            ("Description", description, "optional description"),
+                        ],
                         *field,
                     );
                 }
@@ -189,7 +236,10 @@ pub async fn run(mut app: App) -> io::Result<()> {
                     modal::render_form(
                         frame,
                         "Edit Permission",
-                        &[("Name", name), ("Description", description)],
+                        &[
+                            ("Name", name, "e.g. documents:read"),
+                            ("Description", description, "optional description"),
+                        ],
                         *field,
                     );
                 }
@@ -498,12 +548,16 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
             }
             return;
         }
-        Modal::EditClient { mut name, mut redirect_uris, mut scopes, mut field, id } => {
+        Modal::EditClient { mut name, mut redirect_uris, mut scopes, mut access_token_ttl, mut refresh_token_ttl, mut client_type, mut field, id } => {
             match code {
                 KeyCode::Esc => app.modal = Modal::None,
                 KeyCode::Tab => {
-                    field = (field + 1) % 3;
-                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, field };
+                    field = (field + 1) % 6;
+                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, client_type, field };
+                }
+                KeyCode::Char(' ') | KeyCode::Left | KeyCode::Right if field == 5 => {
+                    client_type = (client_type + 1) % 3;
+                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, client_type, field };
                 }
                 KeyCode::Enter => {
                     if !name.is_empty() {
@@ -511,25 +565,122 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         let n = name.clone();
                         let ru = redirect_uris.clone();
                         let sc = scopes.clone();
+                        let att = access_token_ttl.clone();
+                        let rtt = refresh_token_ttl.clone();
+                        let ct = client_type;
                         app.modal = Modal::None;
-                        perform_edit_client(app, id2, n, ru, sc).await;
+                        perform_edit_client(app, id2, n, ru, sc, att, rtt, ct).await;
                     }
                 }
                 KeyCode::Backspace => {
                     match field {
                         0 => { name.pop(); }
                         1 => { redirect_uris.pop(); }
-                        _ => { scopes.pop(); }
+                        2 => { scopes.pop(); }
+                        3 => { access_token_ttl.pop(); }
+                        4 => { refresh_token_ttl.pop(); }
+                        _ => {}
                     }
-                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, field };
+                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, client_type, field };
                 }
                 KeyCode::Char(c) => {
                     match field {
                         0 => name.push(c),
                         1 => redirect_uris.push(c),
+                        2 => scopes.push(c),
+                        3 => access_token_ttl.push(c),
+                        4 => refresh_token_ttl.push(c),
+                        _ => {}
+                    }
+                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, access_token_ttl, refresh_token_ttl, client_type, field };
+                }
+                _ => {}
+            }
+            return;
+        }
+        Modal::CreateIdp { mut provider, mut client_id, mut client_secret, mut redirect_url, mut scopes, mut field } => {
+            match code {
+                KeyCode::Esc => app.modal = Modal::None,
+                KeyCode::Tab => {
+                    field = (field + 1) % 5;
+                    app.modal = Modal::CreateIdp { provider, client_id, client_secret, redirect_url, scopes, field };
+                }
+                KeyCode::Enter => {
+                    if !provider.is_empty() && !client_id.is_empty() && !client_secret.is_empty() {
+                        let prov = provider.clone();
+                        let cid = client_id.clone();
+                        let cs = client_secret.clone();
+                        let ru = redirect_url.clone();
+                        let sc = scopes.clone();
+                        app.modal = Modal::None;
+                        perform_create_idp(app, prov, cid, cs, ru, sc).await;
+                    }
+                }
+                KeyCode::Backspace => {
+                    match field {
+                        0 => { provider.pop(); }
+                        1 => { client_id.pop(); }
+                        2 => { client_secret.pop(); }
+                        3 => { redirect_url.pop(); }
+                        _ => { scopes.pop(); }
+                    }
+                    app.modal = Modal::CreateIdp { provider, client_id, client_secret, redirect_url, scopes, field };
+                }
+                KeyCode::Char(c) => {
+                    match field {
+                        0 => provider.push(c),
+                        1 => client_id.push(c),
+                        2 => client_secret.push(c),
+                        3 => redirect_url.push(c),
                         _ => scopes.push(c),
                     }
-                    app.modal = Modal::EditClient { id, name, redirect_uris, scopes, field };
+                    app.modal = Modal::CreateIdp { provider, client_id, client_secret, redirect_url, scopes, field };
+                }
+                _ => {}
+            }
+            return;
+        }
+        Modal::EditIdp { mut client_id, mut client_secret, mut redirect_url, mut scopes, mut enabled, mut field, id, provider } => {
+            match code {
+                KeyCode::Esc => app.modal = Modal::None,
+                KeyCode::Tab => {
+                    field = (field + 1) % 5;
+                    app.modal = Modal::EditIdp { id, provider, client_id, client_secret, redirect_url, scopes, enabled, field };
+                }
+                KeyCode::Enter => {
+                    let id2 = id.clone();
+                    let cid = client_id.clone();
+                    let cs = if client_secret.is_empty() { None } else { Some(client_secret.clone()) };
+                    let ru = redirect_url.clone();
+                    let sc = scopes.clone();
+                    let en = enabled;
+                    app.modal = Modal::None;
+                    perform_edit_idp(app, id2, cid, cs, ru, sc, en).await;
+                }
+                // Space on enabled field (4) toggles it
+                KeyCode::Char(' ') if field == 4 => {
+                    enabled = !enabled;
+                    app.modal = Modal::EditIdp { id, provider, client_id, client_secret, redirect_url, scopes, enabled, field };
+                }
+                KeyCode::Backspace => {
+                    match field {
+                        0 => { client_id.pop(); }
+                        1 => { client_secret.pop(); }
+                        2 => { redirect_url.pop(); }
+                        3 => { scopes.pop(); }
+                        _ => {}
+                    }
+                    app.modal = Modal::EditIdp { id, provider, client_id, client_secret, redirect_url, scopes, enabled, field };
+                }
+                KeyCode::Char(c) => {
+                    match field {
+                        0 => client_id.push(c),
+                        1 => client_secret.push(c),
+                        2 => redirect_url.push(c),
+                        3 => scopes.push(c),
+                        _ => {}
+                    }
+                    app.modal = Modal::EditIdp { id, provider, client_id, client_secret, redirect_url, scopes, enabled, field };
                 }
                 _ => {}
             }
@@ -785,12 +936,13 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
         // ── Tier 1: main tab navigation (only when NOT inside Settings) ──
         KeyCode::Left if !app.settings.entered => {
             app.tab = match app.tab {
-                Tab::Clients => Tab::Sessions,
+                Tab::Clients => Tab::IdentityProviders,
                 Tab::Users => Tab::Clients,
                 Tab::Roles => Tab::Users,
                 Tab::Permissions => Tab::Roles,
                 Tab::Sessions => Tab::Permissions,
                 Tab::Settings => Tab::Sessions,
+                Tab::IdentityProviders => Tab::Settings,
             };
             load_current_tab(app).await;
         }
@@ -801,7 +953,8 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
                 Tab::Roles => Tab::Permissions,
                 Tab::Permissions => Tab::Sessions,
                 Tab::Sessions => Tab::Settings,
-                Tab::Settings => Tab::Clients,
+                Tab::Settings => Tab::IdentityProviders,
+                Tab::IdentityProviders => Tab::Clients,
             };
             load_current_tab(app).await;
         }
@@ -844,6 +997,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             Tab::Permissions => { if app.permission_selected > 0 { app.permission_selected -= 1; } }
             Tab::Sessions => { if app.session_selected > 0 { app.session_selected -= 1; } }
             Tab::Settings => {}
+            Tab::IdentityProviders => { if app.idp_selected > 0 { app.idp_selected -= 1; } }
         },
         KeyCode::Down => match app.tab {
             Tab::Clients => { if app.client_selected + 1 < app.clients.len() { app.client_selected += 1; } }
@@ -852,6 +1006,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             Tab::Permissions => { if app.permission_selected + 1 < app.permissions.len() { app.permission_selected += 1; } }
             Tab::Sessions => { if app.session_selected + 1 < app.sessions.len() { app.session_selected += 1; } }
             Tab::Settings => {}
+            Tab::IdentityProviders => { if app.idp_selected + 1 < app.identity_providers.len() { app.idp_selected += 1; } }
         },
         KeyCode::Char('n') => match app.tab {
             Tab::Clients => {
@@ -894,15 +1049,37 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             }
             Tab::Sessions => {}
             Tab::Settings => {}
+            Tab::IdentityProviders => {
+                if app.active_tenant_id.is_some() {
+                    app.modal = Modal::CreateIdp {
+                        provider: String::from("google"),
+                        client_id: String::new(),
+                        client_secret: String::new(),
+                        redirect_url: String::new(),
+                        scopes: String::from("email profile"),
+                        field: 0,
+                    };
+                }
+            }
         },
         KeyCode::Char('e') => match app.tab {
             Tab::Clients => {
                 if let Some(c) = app.selected_client() {
+                    let client_type = if c.grant_types.iter().any(|g| g == "client_credentials") {
+                        2 // Machine/M2M
+                    } else if !c.is_confidential {
+                        1 // SPA/Mobile
+                    } else {
+                        0 // Confidential/Web
+                    };
                     app.modal = Modal::EditClient {
                         id: c.id.clone(),
                         name: c.name.clone(),
                         redirect_uris: c.redirect_uris.join(", "),
                         scopes: c.scopes.join(" "),
+                        access_token_ttl: c.access_token_ttl_minutes.map(|v| v.to_string()).unwrap_or_default(),
+                        refresh_token_ttl: c.refresh_token_ttl_days.map(|v| v.to_string()).unwrap_or_default(),
+                        client_type,
                         field: 0,
                     };
                 }
@@ -929,6 +1106,20 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             }
             Tab::Sessions => {}
             Tab::Settings => {}
+            Tab::IdentityProviders => {
+                if let Some(idp) = app.selected_idp() {
+                    app.modal = Modal::EditIdp {
+                        id: idp.id.clone(),
+                        provider: idp.provider.clone(),
+                        client_id: idp.client_id.clone(),
+                        client_secret: String::new(),
+                        redirect_url: idp.redirect_url.clone(),
+                        scopes: idp.scopes.join(" "),
+                        enabled: idp.enabled,
+                        field: 0,
+                    };
+                }
+            }
         },
         KeyCode::Char('d') => match app.tab {
             Tab::Clients => {
@@ -957,6 +1148,11 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
                 }
             }
             Tab::Settings => {}
+            Tab::IdentityProviders => {
+                if let Some(idp) = app.selected_idp() {
+                    app.modal = Modal::ConfirmDelete { id: idp.id.clone(), label: idp.provider.clone() };
+                }
+            }
         },
         _ => {}
     }
@@ -966,12 +1162,13 @@ async fn load_all(app: &mut App) {
     let Some(tid) = app.active_tenant_id.clone() else { return };
     let client = app.client.clone();
 
-    let (clients_r, users_r, roles_r, perms_r, sessions_r) = tokio::join!(
+    let (clients_r, users_r, roles_r, perms_r, sessions_r, idps_r) = tokio::join!(
         client.list_clients(&tid),
         client.list_users(&tid),
         client.list_roles(&tid),
         client.list_permissions(&tid),
         client.list_sessions(&tid),
+        client.list_identity_providers(&tid),
     );
 
     match clients_r {
@@ -1009,6 +1206,13 @@ async fn load_all(app: &mut App) {
         }
         Err(e) => app.set_status(format!("Sessions error: {e}")),
     }
+    match idps_r {
+        Ok(list) => {
+            app.idp_selected = app.idp_selected.min(list.len().saturating_sub(1));
+            app.identity_providers = list;
+        }
+        Err(e) => app.set_status(format!("IdP error: {e}")),
+    }
 }
 
 async fn load_current_tab(app: &mut App) {
@@ -1020,6 +1224,7 @@ async fn load_current_tab(app: &mut App) {
         Tab::Permissions => load_permissions(app, tid).await,
         Tab::Sessions => load_sessions(app, tid).await,
         Tab::Settings => load_settings(app, tid).await,
+        Tab::IdentityProviders => load_idps(app, tid).await,
     }
 }
 
@@ -1149,7 +1354,7 @@ async fn perform_create_client(
 
     match app
         .client
-        .create_client(&tid, &name, redirect_uris, scopes, is_confidential, grant_types)
+        .create_client(&tid, &name, redirect_uris, scopes, is_confidential, grant_types, None, None)
         .await
     {
         Ok(c) => {
@@ -1302,6 +1507,8 @@ async fn handle_quickstart_key(app: &mut App, code: KeyCode) {
                         scopes,
                         is_confidential,
                         grant_types,
+                        None,
+                        None,
                     ).await {
                         Ok(c) => {
                             qs.created_client_id = Some(c.client_id);
@@ -1402,6 +1609,9 @@ async fn perform_edit_client(
     name: String,
     redirect_uris_str: String,
     scopes_str: String,
+    access_token_ttl_str: String,
+    refresh_token_ttl_str: String,
+    client_type: u8,
 ) {
     let Some(tid) = app.active_tenant_id.clone() else { return };
     let redirect_uris: Vec<String> = redirect_uris_str
@@ -1413,9 +1623,69 @@ async fn perform_edit_client(
         .split_whitespace()
         .map(|s| s.to_owned())
         .collect();
-    match app.client.update_client(&tid, &id, &name, redirect_uris, scopes).await {
+    let access_ttl: Option<i32> = access_token_ttl_str.parse().ok();
+    let refresh_ttl: Option<i32> = refresh_token_ttl_str.parse().ok();
+    let (is_confidential, grant_types) = match client_type {
+        1 => (false, vec!["authorization_code".to_owned()]),
+        2 => (true, vec!["client_credentials".to_owned()]),
+        _ => (true, vec!["authorization_code".to_owned()]),
+    };
+    match app.client.update_client(&tid, &id, &name, redirect_uris, scopes, access_ttl, refresh_ttl, is_confidential, grant_types).await {
         Ok(_) => {
             app.set_status(format!("Client '{name}' updated"));
+            load_all(app).await;
+        }
+        Err(e) => app.modal = Modal::Error(format!("{e}")),
+    }
+}
+
+async fn load_idps(app: &mut App, tenant_id: String) {
+    app.identity_providers = vec![];
+    app.idp_selected = 0;
+    app.idps_loading = true;
+    match app.client.list_identity_providers(&tenant_id).await {
+        Ok(list) => {
+            app.identity_providers = list;
+            app.clear_status();
+        }
+        Err(e) => app.set_status(format!("Error: {e}")),
+    }
+    app.idps_loading = false;
+}
+
+async fn perform_create_idp(
+    app: &mut App,
+    provider: String,
+    client_id: String,
+    client_secret: String,
+    redirect_url: String,
+    scopes_str: String,
+) {
+    let Some(tid) = app.active_tenant_id.clone() else { return };
+    let scopes: Vec<String> = scopes_str.split_whitespace().map(|s| s.to_owned()).collect();
+    match app.client.create_identity_provider(&tid, &provider, &client_id, &client_secret, &redirect_url, scopes).await {
+        Ok(_) => {
+            app.set_status(format!("IdP '{provider}' created"));
+            load_all(app).await;
+        }
+        Err(e) => app.modal = Modal::Error(format!("{e}")),
+    }
+}
+
+async fn perform_edit_idp(
+    app: &mut App,
+    id: String,
+    client_id: String,
+    client_secret: Option<String>,
+    redirect_url: String,
+    scopes_str: String,
+    enabled: bool,
+) {
+    let Some(tid) = app.active_tenant_id.clone() else { return };
+    let scopes: Vec<String> = scopes_str.split_whitespace().map(|s| s.to_owned()).collect();
+    match app.client.update_identity_provider(&tid, &id, &client_id, client_secret.as_deref(), &redirect_url, scopes, enabled).await {
+        Ok(_) => {
+            app.set_status("IdP updated");
             load_all(app).await;
         }
         Err(e) => app.modal = Modal::Error(format!("{e}")),
@@ -1629,6 +1899,8 @@ async fn perform_delete(app: &mut App, id: String) {
         Tab::Sessions => app.client.delete_session(&tid, &id).await
             .map(|_| "Session revoked"),
         Tab::Settings => return,
+        Tab::IdentityProviders => app.client.delete_identity_provider(&tid, &id).await
+            .map(|_| "Identity provider deleted"),
     };
     match result {
         Ok(msg) => {

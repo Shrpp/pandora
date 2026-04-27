@@ -1,4 +1,4 @@
-use crate::api::{Client, OAuthClient, Permission, Role, Session, Tenant, User};
+use crate::api::{Client, IdentityProvider, OAuthClient, Permission, Role, Session, Tenant, User};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppMode {
@@ -21,6 +21,7 @@ pub enum Tab {
     Permissions,
     Sessions,
     Settings,
+    IdentityProviders,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -133,7 +134,9 @@ pub enum Modal {
     ShowSecret { client_id: String, secret: String },
     Error(String),
     QuickStart(QuickStartState),
-    EditClient { id: String, name: String, redirect_uris: String, scopes: String, field: usize },
+    EditClient { id: String, name: String, redirect_uris: String, scopes: String, access_token_ttl: String, refresh_token_ttl: String, client_type: u8, field: usize },
+    CreateIdp { provider: String, client_id: String, client_secret: String, redirect_url: String, scopes: String, field: usize },
+    EditIdp { id: String, provider: String, client_id: String, client_secret: String, redirect_url: String, scopes: String, enabled: bool, field: usize },
     EditUser {
         id: String,
         email: String,
@@ -191,6 +194,10 @@ pub struct App {
     pub permission_selected: usize,
     pub permissions_loading: bool,
 
+    pub identity_providers: Vec<IdentityProvider>,
+    pub idp_selected: usize,
+    pub idps_loading: bool,
+
     pub active_tenant_id: Option<String>,
 
     pub settings: SettingsState,
@@ -243,6 +250,10 @@ impl App {
             permission_selected: 0,
             permissions_loading: false,
 
+            identity_providers: vec![],
+            idp_selected: 0,
+            idps_loading: false,
+
             active_tenant_id: None,
 
             settings: SettingsState::default(),
@@ -277,6 +288,10 @@ impl App {
 
     pub fn selected_permission(&self) -> Option<&Permission> {
         self.permissions.get(self.permission_selected)
+    }
+
+    pub fn selected_idp(&self) -> Option<&IdentityProvider> {
+        self.identity_providers.get(self.idp_selected)
     }
 
     pub fn set_status(&mut self, msg: impl Into<String>) {

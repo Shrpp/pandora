@@ -17,6 +17,9 @@ mod m20240101_000014_sessions_rls;
 mod m20240101_000015_rls_app_role;
 mod m20240101_000016_user_lifecycle;
 mod m20240101_000017_tenant_settings;
+mod m20240101_000018_client_roles;
+mod m20240101_000019_client_token_ttl;
+mod m20240101_000020_identity_providers;
 
 pub struct Migrator;
 
@@ -41,6 +44,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000015_rls_app_role::Migration),
             Box::new(m20240101_000016_user_lifecycle::Migration),
             Box::new(m20240101_000017_tenant_settings::Migration),
+            Box::new(m20240101_000018_client_roles::Migration),
+            Box::new(m20240101_000019_client_token_ttl::Migration),
+            Box::new(m20240101_000020_identity_providers::Migration),
         ]
     }
 }

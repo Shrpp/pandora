@@ -1,3 +1,4 @@
+pub mod admin_identity_providers;
 pub mod admin_permissions;
 pub mod admin_roles;
 pub mod admin_sessions;

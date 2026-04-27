@@ -32,6 +32,8 @@ pub struct CreateClientRequest {
     pub scopes: Option<Vec<String>>,
     pub grant_types: Option<Vec<String>>,
     pub is_confidential: Option<bool>,
+    pub access_token_ttl_minutes: Option<i32>,
+    pub refresh_token_ttl_days: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -46,6 +48,8 @@ pub struct ClientResponse {
     pub grant_types: Vec<String>,
     pub is_confidential: bool,
     pub is_active: bool,
+    pub access_token_ttl_minutes: Option<i32>,
+    pub refresh_token_ttl_days: Option<i32>,
     pub created_at: String,
 }
 
@@ -86,6 +90,8 @@ pub async fn create_client(
                 .unwrap_or_else(|| vec!["openid".into(), "email".into(), "profile".into()]),
             grant_types,
             is_confidential,
+            access_token_ttl_minutes: payload.access_token_ttl_minutes,
+            refresh_token_ttl_days: payload.refresh_token_ttl_days,
         },
     )
     .await?;
@@ -104,6 +110,8 @@ pub async fn create_client(
             grant_types: client_service::scopes_to_vec(&model.grant_types),
             is_confidential: model.is_confidential,
             is_active: model.is_active,
+            access_token_ttl_minutes: model.access_token_ttl_minutes,
+            refresh_token_ttl_days: model.refresh_token_ttl_days,
             created_at: model.created_at.to_rfc3339(),
         }),
     ))
@@ -132,6 +140,8 @@ pub async fn list_clients(
             grant_types: client_service::scopes_to_vec(&m.grant_types),
             is_confidential: m.is_confidential,
             is_active: m.is_active,
+            access_token_ttl_minutes: m.access_token_ttl_minutes,
+            refresh_token_ttl_days: m.refresh_token_ttl_days,
             created_at: m.created_at.to_rfc3339(),
         })
         .collect();
@@ -145,6 +155,10 @@ pub struct UpdateClientRequest {
     pub name: String,
     pub redirect_uris: Vec<String>,
     pub scopes: Option<Vec<String>>,
+    pub access_token_ttl_minutes: Option<i32>,
+    pub refresh_token_ttl_days: Option<i32>,
+    pub is_confidential: Option<bool>,
+    pub grant_types: Option<Vec<String>>,
 }
 
 pub async fn update_client(
@@ -157,7 +171,13 @@ pub async fn update_client(
     let tenant_id = extract_tenant_id(&headers)?;
 
     payload.validate().map_err(|e| AppError::InvalidInput(e.to_string()))?;
-    if payload.redirect_uris.is_empty() {
+
+    let grant_types = payload
+        .grant_types
+        .unwrap_or_else(|| vec!["authorization_code".into()]);
+    let is_m2m = grant_types.iter().any(|g| g == "client_credentials")
+        && !grant_types.iter().any(|g| g == "authorization_code");
+    if !is_m2m && payload.redirect_uris.is_empty() {
         return Err(AppError::InvalidInput("redirect_uris must not be empty".into()));
     }
 
@@ -169,6 +189,10 @@ pub async fn update_client(
             name: payload.name,
             redirect_uris: payload.redirect_uris,
             scopes: payload.scopes.unwrap_or_else(|| vec!["openid".into(), "email".into(), "profile".into()]),
+            access_token_ttl_minutes: payload.access_token_ttl_minutes,
+            refresh_token_ttl_days: payload.refresh_token_ttl_days,
+            is_confidential: payload.is_confidential.unwrap_or(true),
+            grant_types,
         },
     ).await?;
     txn.commit().await?;
@@ -183,6 +207,8 @@ pub async fn update_client(
         grant_types: client_service::scopes_to_vec(&model.grant_types),
         is_confidential: model.is_confidential,
         is_active: model.is_active,
+        access_token_ttl_minutes: model.access_token_ttl_minutes,
+        refresh_token_ttl_days: model.refresh_token_ttl_days,
         created_at: model.created_at.to_rfc3339(),
     }))
 }

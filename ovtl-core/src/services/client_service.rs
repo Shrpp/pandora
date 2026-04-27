@@ -11,6 +11,8 @@ pub struct CreateClientInput {
     pub scopes: Vec<String>,
     pub grant_types: Vec<String>,
     pub is_confidential: bool,
+    pub access_token_ttl_minutes: Option<i32>,
+    pub refresh_token_ttl_days: Option<i32>,
 }
 
 /// Returns `(model, plain_secret)`.
@@ -41,6 +43,8 @@ pub async fn create(
         is_confidential: Set(input.is_confidential),
         require_consent: Set(false),
         is_active: Set(true),
+        access_token_ttl_minutes: Set(input.access_token_ttl_minutes),
+        refresh_token_ttl_days: Set(input.refresh_token_ttl_days),
         ..Default::default()
     }
     .insert(txn)
@@ -88,6 +92,10 @@ pub struct UpdateClientInput {
     pub name: String,
     pub redirect_uris: Vec<String>,
     pub scopes: Vec<String>,
+    pub access_token_ttl_minutes: Option<i32>,
+    pub refresh_token_ttl_days: Option<i32>,
+    pub is_confidential: bool,
+    pub grant_types: Vec<String>,
 }
 
 pub async fn update(
@@ -103,6 +111,10 @@ pub async fn update(
     active.name = Set(input.name);
     active.redirect_uris = Set(serde_json::json!(input.redirect_uris));
     active.scopes = Set(serde_json::json!(input.scopes));
+    active.access_token_ttl_minutes = Set(input.access_token_ttl_minutes);
+    active.refresh_token_ttl_days = Set(input.refresh_token_ttl_days);
+    active.is_confidential = Set(input.is_confidential);
+    active.grant_types = Set(serde_json::json!(input.grant_types));
     Ok(active.update(txn).await?)
 }
 

@@ -107,6 +107,7 @@ pub fn render_tabs(frame: &mut Frame, app: &App, area: Rect) {
         Tab::Permissions => 3,
         Tab::Sessions => 4,
         Tab::Settings => 5,
+        Tab::IdentityProviders => 6,
     };
     let base_style = if focused {
         Style::default().fg(Color::White)
@@ -118,7 +119,7 @@ pub fn render_tabs(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         Style::default().fg(Color::White)
     };
-    let titles: Vec<Line> = ["Clients", "Users", "Roles", "Permissions", "Sessions", "Settings"]
+    let titles: Vec<Line> = ["Clients", "Users", "Roles", "Permissions", "Sessions", "Settings", "IdP"]
         .iter()
         .map(|t| Line::from(*t))
         .collect();

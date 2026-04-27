@@ -1,4 +1,6 @@
 pub mod audit_log;
+pub mod client_roles;
+pub mod identity_providers;
 pub mod one_time_tokens;
 pub mod password_policies;
 pub mod tenant_settings;

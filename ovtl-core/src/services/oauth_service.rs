@@ -7,11 +7,16 @@ use sha2::Sha256;
 use uuid::Uuid;
 
 use crate::{
-    config::Config,
     entity::{oauth_accounts, users},
     error::AppError,
     services::user_service,
 };
+
+pub struct IdpCredentials {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_url: String,
+}
 
 // ── State (CSRF + tenant encoding) ───────────────────────────────────────────
 
@@ -52,19 +57,18 @@ fn hmac_sign(msg: &str, key: &str) -> String {
 
 pub fn build_authorize_url(
     provider: &str,
-    config: &Config,
+    creds: &IdpCredentials,
     tenant_id: Uuid,
+    jwt_secret: &str,
+    extra_scopes: Option<&[String]>,
 ) -> Result<(String, String), AppError> {
-    let (auth_url_str, token_url_str, scopes) = provider_urls(provider)?;
-    let oauth_cfg = config
-        .oauth_for(provider)
-        .ok_or_else(|| AppError::InvalidInput(format!("{provider} OAuth not configured")))?;
+    let (auth_url_str, token_url_str, default_scopes) = provider_urls(provider)?;
 
-    let state_value = generate_state(tenant_id, &config.jwt_secret);
+    let state_value = generate_state(tenant_id, jwt_secret);
 
     let client = BasicClient::new(
-        ClientId::new(oauth_cfg.client_id.clone()),
-        Some(ClientSecret::new(oauth_cfg.client_secret.clone())),
+        ClientId::new(creds.client_id.clone()),
+        Some(ClientSecret::new(creds.client_secret.clone())),
         AuthUrl::new(auth_url_str.to_string()).map_err(|e| AppError::InvalidInput(e.to_string()))?,
         Some(
             TokenUrl::new(token_url_str.to_string())
@@ -72,14 +76,18 @@ pub fn build_authorize_url(
         ),
     )
     .set_redirect_uri(
-        RedirectUrl::new(oauth_cfg.redirect_url.clone())
+        RedirectUrl::new(creds.redirect_url.clone())
             .map_err(|e| AppError::InvalidInput(e.to_string()))?,
     );
+
+    let scopes: Vec<String> = extra_scopes
+        .map(|s| s.to_vec())
+        .unwrap_or_else(|| default_scopes.iter().map(|s| s.to_string()).collect());
 
     let state_clone = state_value.clone();
     let (url, _) = client
         .authorize_url(move || CsrfToken::new(state_clone))
-        .add_scopes(scopes.into_iter().map(|s| Scope::new(s.to_string())))
+        .add_scopes(scopes.into_iter().map(Scope::new))
         .url();
 
     Ok((url.to_string(), state_value))
@@ -106,14 +114,9 @@ fn provider_urls(provider: &str) -> Result<(&'static str, &'static str, Vec<&'st
 pub async fn exchange_code(
     provider: &str,
     code: &str,
-    config: &Config,
+    creds: &IdpCredentials,
 ) -> Result<String, AppError> {
-    let oauth_cfg = config
-        .oauth_for(provider)
-        .ok_or_else(|| AppError::InvalidInput(format!("{provider} OAuth not configured")))?;
-
     let (_, token_url, _) = provider_urls(provider)?;
-
     let client = reqwest::Client::new();
 
     match provider {
@@ -126,9 +129,9 @@ pub async fn exchange_code(
                 .post(token_url)
                 .form(&[
                     ("code", code),
-                    ("client_id", &oauth_cfg.client_id),
-                    ("client_secret", &oauth_cfg.client_secret),
-                    ("redirect_uri", &oauth_cfg.redirect_url),
+                    ("client_id", &creds.client_id),
+                    ("client_secret", &creds.client_secret),
+                    ("redirect_uri", &creds.redirect_url),
                     ("grant_type", "authorization_code"),
                 ])
                 .send()
@@ -149,9 +152,9 @@ pub async fn exchange_code(
                 .header("Accept", "application/json")
                 .form(&[
                     ("code", code),
-                    ("client_id", &oauth_cfg.client_id),
-                    ("client_secret", &oauth_cfg.client_secret),
-                    ("redirect_uri", &oauth_cfg.redirect_url),
+                    ("client_id", &creds.client_id),
+                    ("client_secret", &creds.client_secret),
+                    ("redirect_uri", &creds.redirect_url),
                 ])
                 .send()
                 .await

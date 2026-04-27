@@ -62,6 +62,7 @@ pub async fn refresh(
         &email,
         roles,
         permissions,
+        std::collections::HashMap::new(),
         &state.config.jwt_secret,
         state.config.jwt_expiration_minutes,
     )?;
