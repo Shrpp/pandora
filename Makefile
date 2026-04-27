@@ -23,9 +23,7 @@ migrate:
 	docker compose run --rm ovtl-core ./ovtl-core --migrate
 
 cli:
-	@command -v cargo >/dev/null || { echo "cargo not found"; exit 1; }
-	cargo run -p ovtl-cli -- \
-		--url $${OVTL_URL:-http://localhost:3000}
+	cargo run -p ovtl-cli
 
 test-oidc:
 	@bash scripts/test-oidc.sh
