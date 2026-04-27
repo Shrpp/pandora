@@ -51,10 +51,7 @@ impl Client {
         map
     }
 
-    async fn check<T: for<'de> Deserialize<'de>>(
-        &self,
-        resp: reqwest::Response,
-    ) -> ApiResult<T> {
+    async fn check<T: for<'de> Deserialize<'de>>(&self, resp: reqwest::Response) -> ApiResult<T> {
         let status = resp.status();
         if status.is_success() {
             Ok(resp.json::<T>().await?)
@@ -94,7 +91,10 @@ impl Client {
 
     pub async fn list_tenant_slugs(&self) -> ApiResult<Vec<(String, String)>> {
         #[derive(Deserialize)]
-        struct Entry { slug: String, name: String }
+        struct Entry {
+            slug: String,
+            name: String,
+        }
         let resp = self
             .inner
             .get(format!("{}/tenants/slugs", self.base_url))
@@ -230,7 +230,12 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn set_user_active(&self, tenant_id: &str, id: &str, is_active: bool) -> ApiResult<()> {
+    pub async fn set_user_active(
+        &self,
+        tenant_id: &str,
+        id: &str,
+        is_active: bool,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
             .put(format!("{}/users/{}", self.base_url, id))
@@ -242,7 +247,10 @@ impl Client {
         if status.is_success() {
             Ok(())
         } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "update failed".into() })
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "update failed".into(),
+            })
         }
     }
 
@@ -276,7 +284,12 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn create_role(&self, tenant_id: &str, name: &str, description: &str) -> ApiResult<Role> {
+    pub async fn create_role(
+        &self,
+        tenant_id: &str,
+        name: &str,
+        description: &str,
+    ) -> ApiResult<Role> {
         let resp = self
             .inner
             .post(format!("{}/roles", self.base_url))
@@ -287,7 +300,13 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn update_role(&self, tenant_id: &str, role_id: &str, name: &str, description: &str) -> ApiResult<()> {
+    pub async fn update_role(
+        &self,
+        tenant_id: &str,
+        role_id: &str,
+        name: &str,
+        description: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
             .put(format!("{}/roles/{}", self.base_url, role_id))
@@ -296,8 +315,13 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "update failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "update failed".into(),
+            })
         }
     }
 
@@ -309,12 +333,21 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "delete failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "delete failed".into(),
+            })
         }
     }
 
-    pub async fn list_role_permissions(&self, tenant_id: &str, role_id: &str) -> ApiResult<Vec<Permission>> {
+    pub async fn list_role_permissions(
+        &self,
+        tenant_id: &str,
+        role_id: &str,
+    ) -> ApiResult<Vec<Permission>> {
         let resp = self
             .inner
             .get(format!("{}/roles/{}/permissions", self.base_url, role_id))
@@ -324,7 +357,12 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn assign_role_permission(&self, tenant_id: &str, role_id: &str, permission_id: &str) -> ApiResult<()> {
+    pub async fn assign_role_permission(
+        &self,
+        tenant_id: &str,
+        role_id: &str,
+        permission_id: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
             .post(format!("{}/roles/{}/permissions", self.base_url, role_id))
@@ -333,21 +371,39 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "assign failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "assign failed".into(),
+            })
         }
     }
 
-    pub async fn revoke_role_permission(&self, tenant_id: &str, role_id: &str, perm_id: &str) -> ApiResult<()> {
+    pub async fn revoke_role_permission(
+        &self,
+        tenant_id: &str,
+        role_id: &str,
+        perm_id: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
-            .delete(format!("{}/roles/{}/permissions/{}", self.base_url, role_id, perm_id))
+            .delete(format!(
+                "{}/roles/{}/permissions/{}",
+                self.base_url, role_id, perm_id
+            ))
             .headers(self.tenant_headers(tenant_id))
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "revoke failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "revoke failed".into(),
+            })
         }
     }
 
@@ -361,7 +417,12 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn assign_user_role(&self, tenant_id: &str, user_id: &str, role_id: &str) -> ApiResult<()> {
+    pub async fn assign_user_role(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        role_id: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
             .post(format!("{}/users/{}/roles", self.base_url, user_id))
@@ -370,21 +431,39 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "assign failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "assign failed".into(),
+            })
         }
     }
 
-    pub async fn revoke_user_role(&self, tenant_id: &str, user_id: &str, role_id: &str) -> ApiResult<()> {
+    pub async fn revoke_user_role(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        role_id: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
-            .delete(format!("{}/users/{}/roles/{}", self.base_url, user_id, role_id))
+            .delete(format!(
+                "{}/users/{}/roles/{}",
+                self.base_url, user_id, role_id
+            ))
             .headers(self.tenant_headers(tenant_id))
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "revoke failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "revoke failed".into(),
+            })
         }
     }
 
@@ -430,7 +509,12 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn create_permission(&self, tenant_id: &str, name: &str, description: &str) -> ApiResult<Permission> {
+    pub async fn create_permission(
+        &self,
+        tenant_id: &str,
+        name: &str,
+        description: &str,
+    ) -> ApiResult<Permission> {
         let resp = self
             .inner
             .post(format!("{}/permissions", self.base_url))
@@ -441,7 +525,13 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn update_permission(&self, tenant_id: &str, perm_id: &str, name: &str, description: &str) -> ApiResult<()> {
+    pub async fn update_permission(
+        &self,
+        tenant_id: &str,
+        perm_id: &str,
+        name: &str,
+        description: &str,
+    ) -> ApiResult<()> {
         let resp = self
             .inner
             .put(format!("{}/permissions/{}", self.base_url, perm_id))
@@ -450,8 +540,13 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "update failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "update failed".into(),
+            })
         }
     }
 
@@ -463,12 +558,24 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "delete failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "delete failed".into(),
+            })
         }
     }
 
-    pub async fn update_user_email(&self, tenant_id: &str, user_id: &str, email: &str, password: Option<&str>, is_active: bool) -> ApiResult<()> {
+    pub async fn update_user_email(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        email: &str,
+        password: Option<&str>,
+        is_active: bool,
+    ) -> ApiResult<()> {
         let mut body = serde_json::json!({ "email": email, "is_active": is_active });
         if let Some(pw) = password {
             body["password"] = serde_json::Value::String(pw.to_string());
@@ -481,8 +588,13 @@ impl Client {
             .send()
             .await?;
         let status = resp.status();
-        if status.is_success() { Ok(()) } else {
-            Err(ApiError::Api { status: status.as_u16(), message: "update failed".into() })
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Api {
+                status: status.as_u16(),
+                message: "update failed".into(),
+            })
         }
     }
 
@@ -591,7 +703,10 @@ impl Client {
         self.check(resp).await
     }
 
-    pub async fn get_registration_policy(&self, tenant_id: &str) -> ApiResult<RegistrationPolicyResponse> {
+    pub async fn get_registration_policy(
+        &self,
+        tenant_id: &str,
+    ) -> ApiResult<RegistrationPolicyResponse> {
         let resp = self
             .inner
             .get(format!("{}/settings/registration", self.base_url))

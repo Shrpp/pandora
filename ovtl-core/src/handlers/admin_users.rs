@@ -52,7 +52,12 @@ pub async fn list_users(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let tenant = tenant_service::find_active(&state.db, tenant_id).await?;
@@ -69,12 +74,9 @@ pub async fn list_users(
     let response: Vec<UserResponse> = users
         .into_iter()
         .map(|u| {
-            let email = hefesto::decrypt(
-                &u.email,
-                &tenant_key,
-                &state.config.master_encryption_key,
-            )
-            .unwrap_or_else(|_| "<encrypted>".into());
+            let email =
+                hefesto::decrypt(&u.email, &tenant_key, &state.config.master_encryption_key)
+                    .unwrap_or_else(|_| "<encrypted>".into());
             UserResponse {
                 id: u.id.to_string(),
                 email,
@@ -93,7 +95,12 @@ pub async fn create_user(
     headers: HeaderMap,
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     payload
@@ -164,7 +171,12 @@ pub async fn update_user(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     payload
@@ -208,7 +220,12 @@ pub async fn deactivate_user(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let txn = db::begin_tenant_txn(&state.db, tenant_id).await?;
@@ -223,7 +240,12 @@ pub async fn get_verification_code(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let otp = one_time_token_service::generate_otp();
@@ -246,7 +268,12 @@ pub async fn get_password_reset_token(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let token = one_time_token_service::generate();

@@ -51,7 +51,8 @@ pub async fn callback(
     )?;
 
     // Exchange authorization code for provider access token
-    let provider_token = oauth_service::exchange_code(&provider, &params.code, &state.config).await?;
+    let provider_token =
+        oauth_service::exchange_code(&provider, &params.code, &state.config).await?;
 
     // Fetch user profile from provider
     let profile = oauth_service::fetch_profile(&provider, &provider_token).await?;
@@ -69,7 +70,11 @@ pub async fn callback(
     .await?;
 
     // Issue Pandora tokens
-    let email = hefesto::decrypt(&user.email, &tenant_key, &state.config.master_encryption_key)?;
+    let email = hefesto::decrypt(
+        &user.email,
+        &tenant_key,
+        &state.config.master_encryption_key,
+    )?;
     let access_token = token_service::generate_access_token(
         user.id,
         tenant_id,

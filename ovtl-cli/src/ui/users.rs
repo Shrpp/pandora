@@ -13,12 +13,22 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect, table: &mut StatefulTabl
             vec![
                 u.id[..8].to_string() + "…",
                 u.email.clone(),
-                if u.is_active { "active".into() } else { "inactive".into() },
+                if u.is_active {
+                    "active".into()
+                } else {
+                    "inactive".into()
+                },
                 u.created_at[..10].to_string(),
             ]
         })
         .collect();
 
     table.select(app.user_selected);
-    table.render(frame, area, &title, &["ID", "Email", "Status", "Created"], rows);
+    table.render(
+        frame,
+        area,
+        &title,
+        &["ID", "Email", "Status", "Created"],
+        rows,
+    );
 }

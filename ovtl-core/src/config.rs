@@ -90,9 +90,7 @@ impl Config {
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>();
 
-        if environment == Environment::Production
-            && cors_allowed_origins == vec!["*".to_string()]
-        {
+        if environment == Environment::Production && cors_allowed_origins == vec!["*".to_string()] {
             return Err(
                 "CORS_ALLOWED_ORIGINS must be set explicitly in production (no wildcard)".into(),
             );
@@ -118,8 +116,7 @@ impl Config {
             bootstrap_tenant_slug: env::var("OVTL_BOOTSTRAP_TENANT_SLUG").ok(),
             bootstrap_admin_email: env::var("OVTL_BOOTSTRAP_ADMIN_EMAIL").ok(),
             bootstrap_admin_password: env::var("OVTL_BOOTSTRAP_ADMIN_PASSWORD").ok(),
-            ovtl_issuer: env::var("OVTL_ISSUER")
-                .unwrap_or_else(|_| "http://localhost:3000".into()),
+            ovtl_issuer: env::var("OVTL_ISSUER").unwrap_or_else(|_| "http://localhost:3000".into()),
             rsa_private_key: env::var("RSA_PRIVATE_KEY").ok(),
         })
     }
@@ -151,7 +148,9 @@ fn require(key: &str) -> Result<String, String> {
 
 fn parse_i64(key: &str, default: i64) -> Result<i64, String> {
     match env::var(key) {
-        Ok(v) => v.parse::<i64>().map_err(|_| format!("{key} must be an integer")),
+        Ok(v) => v
+            .parse::<i64>()
+            .map_err(|_| format!("{key} must be an integer")),
         Err(_) => Ok(default),
     }
 }

@@ -78,11 +78,13 @@ async fn test_register_and_login() {
         .await;
 
     let email_lookup = hefesto::hash_for_lookup(email, &tenant_key);
-    let email_encrypted = hefesto::encrypt(email, &tenant_key, &cfg.master_encryption_key)
-        .expect("encrypt email");
+    let email_encrypted =
+        hefesto::encrypt(email, &tenant_key, &cfg.master_encryption_key).expect("encrypt email");
     let password_hash = hefesto::hash_password(password).expect("hash password");
 
-    let txn = db::begin_tenant_txn(&db, tenant_id).await.expect("begin txn");
+    let txn = db::begin_tenant_txn(&db, tenant_id)
+        .await
+        .expect("begin txn");
     let user = ovtl_core::services::user_service::create(
         &txn,
         ovtl_core::services::user_service::CreateUserInput {
@@ -98,7 +100,9 @@ async fn test_register_and_login() {
 
     assert_eq!(user.tenant_id, tenant_id);
 
-    let txn = db::begin_tenant_txn(&db, tenant_id).await.expect("begin txn");
+    let txn = db::begin_tenant_txn(&db, tenant_id)
+        .await
+        .expect("begin txn");
     let found = ovtl_core::services::user_service::find_by_email_lookup(&txn, &email_lookup)
         .await
         .expect("find user")
@@ -117,8 +121,8 @@ async fn test_register_and_login() {
     )
     .expect("generate token");
 
-    let claims = token_service::validate_access_token(&token, &cfg.jwt_secret)
-        .expect("validate token");
+    let claims =
+        token_service::validate_access_token(&token, &cfg.jwt_secret).expect("validate token");
 
     assert_eq!(claims.sub, user.id.to_string());
     assert_eq!(claims.tid, tenant_id.to_string());
@@ -252,8 +256,15 @@ async fn test_refresh_token_rotation() {
     )
     .unwrap();
 
-    let user =
-        create_test_user(&db, &cfg, tenant_id, &tenant_key, "refresh@ovtl.dev", "Pass1234!").await;
+    let user = create_test_user(
+        &db,
+        &cfg,
+        tenant_id,
+        &tenant_key,
+        "refresh@ovtl.dev",
+        "Pass1234!",
+    )
+    .await;
 
     let rt1 = token_service::generate_refresh_token();
     let hash1 = token_service::hash_refresh_token(&rt1);
@@ -295,7 +306,12 @@ async fn test_revoke_all_tokens() {
     .unwrap();
 
     let user = create_test_user(
-        &db, &cfg, tenant_id, &tenant_key, "revoke@ovtl.dev", "Pass1234!",
+        &db,
+        &cfg,
+        tenant_id,
+        &tenant_key,
+        "revoke@ovtl.dev",
+        "Pass1234!",
     )
     .await;
 
@@ -336,7 +352,11 @@ async fn test_oauth_state_roundtrip() {
 
     let state = oauth_service::generate_state(tenant_id, &cfg.jwt_secret);
     let recovered = oauth_service::verify_state(&state, &cfg.jwt_secret);
-    assert_eq!(recovered, Some(tenant_id), "state must decode to original tenant_id");
+    assert_eq!(
+        recovered,
+        Some(tenant_id),
+        "state must decode to original tenant_id"
+    );
 
     let mut bad = state.clone();
     bad.push('x');

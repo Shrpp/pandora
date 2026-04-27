@@ -8,13 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::{
-    db,
-    error::AppError,
-    handlers::admin_auth,
-    services::client_service,
-    state::AppState,
-};
+use crate::{db, error::AppError, handlers::admin_auth, services::client_service, state::AppState};
 
 fn extract_tenant_id(headers: &HeaderMap) -> Result<Uuid, AppError> {
     headers
@@ -54,7 +48,12 @@ pub async fn create_client(
     headers: HeaderMap,
     Json(payload): Json<CreateClientRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     payload
@@ -70,7 +69,9 @@ pub async fn create_client(
     let is_m2m = grant_types.iter().any(|g| g == "client_credentials")
         && !grant_types.iter().any(|g| g == "authorization_code");
     if !is_m2m && payload.redirect_uris.is_empty() {
-        return Err(AppError::InvalidInput("redirect_uris must not be empty".into()));
+        return Err(AppError::InvalidInput(
+            "redirect_uris must not be empty".into(),
+        ));
     }
 
     let txn = db::begin_tenant_txn(&state.db, tenant_id).await?;
@@ -113,7 +114,12 @@ pub async fn list_clients(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let txn = db::begin_tenant_txn(&state.db, tenant_id).await?;
@@ -153,12 +159,21 @@ pub async fn update_client(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateClientRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
-    payload.validate().map_err(|e| AppError::InvalidInput(e.to_string()))?;
+    payload
+        .validate()
+        .map_err(|e| AppError::InvalidInput(e.to_string()))?;
     if payload.redirect_uris.is_empty() {
-        return Err(AppError::InvalidInput("redirect_uris must not be empty".into()));
+        return Err(AppError::InvalidInput(
+            "redirect_uris must not be empty".into(),
+        ));
     }
 
     let txn = db::begin_tenant_txn(&state.db, tenant_id).await?;
@@ -168,9 +183,12 @@ pub async fn update_client(
         client_service::UpdateClientInput {
             name: payload.name,
             redirect_uris: payload.redirect_uris,
-            scopes: payload.scopes.unwrap_or_else(|| vec!["openid".into(), "email".into(), "profile".into()]),
+            scopes: payload
+                .scopes
+                .unwrap_or_else(|| vec!["openid".into(), "email".into(), "profile".into()]),
         },
-    ).await?;
+    )
+    .await?;
     txn.commit().await?;
 
     Ok(Json(ClientResponse {
@@ -192,7 +210,12 @@ pub async fn deactivate_client(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    admin_auth::require_admin(&headers, &state.config.admin_key, &state.config.jwt_secret, state.master_tenant_id)?;
+    admin_auth::require_admin(
+        &headers,
+        &state.config.admin_key,
+        &state.config.jwt_secret,
+        state.master_tenant_id,
+    )?;
     let tenant_id = extract_tenant_id(&headers)?;
 
     let txn = db::begin_tenant_txn(&state.db, tenant_id).await?;

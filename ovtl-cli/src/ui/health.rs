@@ -24,7 +24,9 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(
             "Server Health",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(vec![
@@ -50,9 +52,10 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
         Span::raw(app.client.base_url.clone()),
     ]));
     lines.push(Line::from(""));
-    lines.push(Line::from(
-        Span::styled("Press r to refresh", Style::default().fg(Color::DarkGray)),
-    ));
+    lines.push(Line::from(Span::styled(
+        "Press r to refresh",
+        Style::default().fg(Color::DarkGray),
+    )));
 
     let block = Block::default().borders(Borders::ALL).title(" Health ");
     let para = Paragraph::new(lines)
@@ -61,4 +64,3 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     frame.render_widget(para, inner);
 }
-

@@ -1,4 +1,9 @@
-use axum::{extract::{ConnectInfo, State}, http::header, response::IntoResponse, Extension, Json};
+use axum::{
+    extract::{ConnectInfo, State},
+    http::header,
+    response::IntoResponse,
+    Extension, Json,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use validator::Validate;
@@ -7,7 +12,10 @@ use crate::{
     db,
     error::AppError,
     middleware::tenant::TenantContext,
-    services::{audit_service, lockout_service, permission_service, role_service, session_service, tenant_settings_service, token_service, user_service},
+    services::{
+        audit_service, lockout_service, permission_service, role_service, session_service,
+        tenant_settings_service, token_service, user_service,
+    },
     state::AppState,
 };
 
@@ -157,7 +165,10 @@ pub async fn login(
         &state.db,
         ctx.tenant_id,
         user.id,
-        session_service::SessionData { email: email_plain, ip: Some(ip) },
+        session_service::SessionData {
+            email: email_plain,
+            ip: Some(ip),
+        },
         settings.refresh_token_ttl_days,
     )
     .await

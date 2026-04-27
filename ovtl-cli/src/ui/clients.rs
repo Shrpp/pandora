@@ -15,11 +15,21 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect, table: &mut StatefulTabl
                 c.name.clone(),
                 c.client_id[..8].to_string() + "…",
                 c.scopes.join(" "),
-                if c.is_active { "active".into() } else { "inactive".into() },
+                if c.is_active {
+                    "active".into()
+                } else {
+                    "inactive".into()
+                },
             ]
         })
         .collect();
 
     table.select(app.client_selected);
-    table.render(frame, area, &title, &["ID", "Name", "Client ID", "Scopes", "Active"], rows);
+    table.render(
+        frame,
+        area,
+        &title,
+        &["ID", "Name", "Client ID", "Scopes", "Active"],
+        rows,
+    );
 }

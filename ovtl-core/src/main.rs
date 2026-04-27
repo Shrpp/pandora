@@ -11,7 +11,9 @@ use ovtl_core::{
         tenant::tenant_middleware,
     },
     routes,
-    services::{bootstrap_service, jwk_service::JwkService, lockout_service, session_service, token_service},
+    services::{
+        bootstrap_service, jwk_service::JwkService, lockout_service, session_service, token_service,
+    },
     state::AppState,
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
@@ -45,10 +47,12 @@ async fn main() {
         tracing::info!("migrations applied");
     }
 
-    bootstrap_service::run(&db, &config).await.unwrap_or_else(|e| {
-        eprintln!("Bootstrap failed: {e}");
-        std::process::exit(1);
-    });
+    bootstrap_service::run(&db, &config)
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("Bootstrap failed: {e}");
+            std::process::exit(1);
+        });
 
     let jwk = match &config.rsa_private_key {
         Some(b64) => JwkService::from_pem_b64(b64).unwrap_or_else(|e| {
@@ -146,7 +150,10 @@ fn build_router(state: AppState) -> Router {
         .merge(routes::admin_permissions::router());
 
     let well_known_router = Router::new()
-        .route("/.well-known/openid-configuration", get(well_known::discovery))
+        .route(
+            "/.well-known/openid-configuration",
+            get(well_known::discovery),
+        )
         .route("/.well-known/jwks.json", get(well_known::jwks));
 
     let oauth_as = routes::oauth_as::router();
@@ -171,10 +178,8 @@ fn build_cors(origins: &[String]) -> CorsLayer {
     if origins == ["*"] {
         CorsLayer::permissive()
     } else {
-        let parsed: Vec<axum::http::HeaderValue> = origins
-            .iter()
-            .filter_map(|o| o.parse().ok())
-            .collect();
+        let parsed: Vec<axum::http::HeaderValue> =
+            origins.iter().filter_map(|o| o.parse().ok()).collect();
         CorsLayer::new().allow_origin(AllowOrigin::list(parsed))
     }
 }
@@ -184,8 +189,7 @@ async fn health() -> Json<serde_json::Value> {
 }
 
 fn init_tracing(production: bool) {
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| "ovtl_core=info".into());
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "ovtl_core=info".into());
     let registry = tracing_subscriber::registry().with(filter);
     if production {
         registry
