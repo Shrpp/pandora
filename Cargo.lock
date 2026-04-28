@@ -2301,7 +2301,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ovtl-cli"
+name = "ovlt-cli"
 version = "0.1.0"
 dependencies = [
  "arboard",
@@ -2319,7 +2319,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ovtl-core"
+name = "ovlt-core"
 version = "0.2.0"
 dependencies = [
  "axum",
