@@ -86,14 +86,43 @@ docker run -p 3000:3000 \
 
 ## Install Admin TUI
 
-Download the `ovlt` binary from [GitHub Releases](https://github.com/shrpp/ovlt/releases/latest) for your platform:
+Download the `ovlt` binary from [GitHub Releases](https://github.com/shrpp/ovlt/releases/latest) for your platform.
 
+**macOS**
 ```bash
-chmod +x ovlt && sudo mv ovlt /usr/local/bin/
+# Remove quarantine flag (required — binary is unsigned in alpha)
+xattr -dr com.apple.quarantine ovlt-aarch64-apple-darwin   # M1/M2/M3
+# or
+xattr -dr com.apple.quarantine ovlt-x86_64-apple-darwin    # Intel
+
+chmod +x ovlt-*-apple-darwin
+sudo mv ovlt-*-apple-darwin /usr/local/bin/ovlt
 ovlt --url http://localhost:3000
 ```
 
+**Linux**
+```bash
+chmod +x ovlt-x86_64-unknown-linux-gnu   # x86_64
+# or
+chmod +x ovlt-aarch64-unknown-linux-gnu  # ARM64
+
+sudo mv ovlt-*-linux-* /usr/local/bin/ovlt
+ovlt --url http://localhost:3000
+```
+
+**Windows**
+```powershell
+# Rename and move to a folder in your PATH
+Move-Item ovlt-windows-x86_64.exe ovlt.exe
+
+# Run directly
+.\ovlt.exe --url http://localhost:3000
+```
+> Windows SmartScreen will show a warning because the binary is not yet code-signed. This is expected for alpha builds. Click **More info → Run anyway** to proceed.
+
 The TUI guides you through tenant creation, user management, client registration, and permissions — no web browser required.
+
+> **Alpha notice:** Installation steps above are intentionally manual. Homebrew tap (macOS), WinGet/Scoop (Windows), and code signing are planned for the stable beta release. This is subject to change.
 
 ---
 
