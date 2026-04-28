@@ -374,7 +374,16 @@ async fn token_client_credentials(state: AppState, req: TokenRequest) -> Result<
         .filter(|s| registered_scopes.contains(s))
         .collect();
 
-    // 5. Issue access token (no user context, sub = client_id).
+    // 5. Fetch roles assigned to this client.
+    let txn = db::begin_tenant_txn(&state.db, client.tenant_id).await?;
+    let client_role_names: Vec<String> = role_service::list_for_client(&txn, client.id)
+        .await?
+        .into_iter()
+        .map(|r| r.name)
+        .collect();
+    txn.commit().await?;
+
+    // 6. Issue access token (no user context, sub = client_id).
     let access_ttl = client
         .access_token_ttl_minutes
         .map(|t| t as i64)
@@ -384,6 +393,7 @@ async fn token_client_credentials(state: AppState, req: TokenRequest) -> Result<
         &client.client_id,
         client.tenant_id,
         &final_scopes,
+        client_role_names,
         &state.config.jwt_secret,
         access_ttl,
     )?;

@@ -70,13 +70,16 @@ struct ClientTokenClaims {
     tid: String,
     iat: i64,
     exp: i64,
-    scope: String, // space-joined scopes
+    scope: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    roles: Vec<String>,
 }
 
 pub fn generate_client_access_token(
     client_id: &str,
     tenant_id: Uuid,
     scopes: &[String],
+    roles: Vec<String>,
     secret: &str,
     expiration_minutes: i64,
 ) -> Result<String, AppError> {
@@ -88,6 +91,7 @@ pub fn generate_client_access_token(
         iat: now,
         exp: now + expiration_minutes * 60,
         scope: scopes.join(" "),
+        roles,
     };
     encode(
         &Header::default(),

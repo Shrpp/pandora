@@ -1,4 +1,4 @@
-use crate::api::{Client, IdentityProvider, OAuthClient, Permission, Role, Session, Tenant, User};
+use crate::api::{AuditLogEntry, Client, IdentityProvider, OAuthClient, Permission, Role, Session, Tenant, User};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppMode {
@@ -28,6 +28,7 @@ pub enum Tab {
     Sessions,
     Settings,
     IdentityProviders,
+    AuditLog,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -204,6 +205,10 @@ pub struct App {
     pub idp_selected: usize,
     pub idps_loading: bool,
 
+    pub audit_log: Vec<AuditLogEntry>,
+    pub audit_log_selected: usize,
+    pub audit_log_loading: bool,
+
     pub active_tenant_id: Option<String>,
 
     pub settings: SettingsState,
@@ -259,6 +264,10 @@ impl App {
             identity_providers: vec![],
             idp_selected: 0,
             idps_loading: false,
+
+            audit_log: vec![],
+            audit_log_selected: 0,
+            audit_log_loading: false,
 
             active_tenant_id: None,
 

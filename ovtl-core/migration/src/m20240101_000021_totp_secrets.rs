@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                 ALTER TABLE totp_secrets FORCE ROW LEVEL SECURITY;
                 CREATE POLICY tenant_isolation ON totp_secrets
                     USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
-                GRANT SELECT, INSERT, UPDATE, DELETE ON totp_secrets TO ovtl_app;",
+                GRANT SELECT, INSERT, UPDATE, DELETE ON totp_secrets TO ovtl_rls;",
             )
             .await?;
         Ok(())

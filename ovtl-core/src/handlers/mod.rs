@@ -1,4 +1,5 @@
 pub mod admin_auth;
+pub mod audit_log;
 pub mod mfa;
 pub mod admin_identity_providers;
 pub mod admin_permissions;

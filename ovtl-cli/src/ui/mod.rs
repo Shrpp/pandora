@@ -1,3 +1,4 @@
+pub mod audit_log;
 pub mod clients;
 pub mod identity_providers;
 pub mod layout;

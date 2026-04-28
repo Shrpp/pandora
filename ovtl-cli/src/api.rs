@@ -637,6 +637,18 @@ impl Client {
         }
     }
 
+    // ── Audit Log ─────────────────────────────────────────────────────────────
+
+    pub async fn list_audit_log(&self, tenant_id: &str) -> ApiResult<Vec<AuditLogEntry>> {
+        let resp = self
+            .inner
+            .get(format!("{}/audit-log", self.base_url))
+            .headers(self.tenant_headers(tenant_id))
+            .send()
+            .await?;
+        self.check(resp).await
+    }
+
     // ── Health ────────────────────────────────────────────────────────────────
 
     pub async fn health(&self) -> ApiResult<serde_json::Value> {
@@ -881,4 +893,14 @@ pub struct TokenTtlResponse {
 pub struct RegistrationPolicyResponse {
     pub allow_public_registration: bool,
     pub require_email_verified: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AuditLogEntry {
+    pub id: String,
+    pub user_id: Option<String>,
+    pub action: String,
+    pub ip: Option<String>,
+    pub metadata: Option<String>,
+    pub created_at: String,
 }

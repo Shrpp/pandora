@@ -11,6 +11,7 @@ use crate::{
     api::{ApiError, LoginResult},
     app::{App, AppMode, Focus, Modal, QuickStartState, Tab},
     components::{modal, statusbar, table::StatefulTable},
+    config_file,
     events::{poll, AppEvent},
     ui,
 };
@@ -22,10 +23,29 @@ pub async fn run(mut app: App) -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // Restore saved session token if present.
+    let saved_cfg = config_file::load();
+    if let Some(token) = saved_cfg.token.clone() {
+        app.client.set_token(token);
+        app.mode = AppMode::Admin;
+        load_tenants(&mut app).await;
+        check_health(&mut app).await;
+        // If tenant list loaded successfully we stay in Admin; otherwise drop back to Login.
+        if app.tenants.is_empty() {
+            app.mode = AppMode::Login {
+                email: String::new(),
+                password: String::new(),
+                slug: String::from("master"),
+                slug_idx: 0,
+                field: 0,
+                error: None,
+            };
+        }
+    }
+
     // Pre-fetch tenant list so login can show a dropdown.
     if let Ok(opts) = app.client.list_tenant_slugs().await {
         if !opts.is_empty() {
-            // Sync the default slug to the first option.
             if let AppMode::Login { slug, slug_idx, .. } = &mut app.mode {
                 *slug = opts[0].0.clone();
                 *slug_idx = 0;
@@ -37,6 +57,7 @@ pub async fn run(mut app: App) -> io::Result<()> {
     let mut client_table = StatefulTable::new();
     let mut user_table = StatefulTable::new();
     let mut idp_table = StatefulTable::new();
+    let mut audit_table = StatefulTable::new();
     let mut session_list_state = ratatui::widgets::ListState::default();
     let mut role_list_state = ratatui::widgets::ListState::default();
     let mut permission_list_state = ratatui::widgets::ListState::default();
@@ -63,6 +84,7 @@ pub async fn run(mut app: App) -> io::Result<()> {
                 Tab::Sessions => ui::sessions::render(frame, &app, content_body, &mut session_list_state),
                 Tab::Settings => ui::settings::render(frame, &app, content_body),
                 Tab::IdentityProviders => ui::identity_providers::render(frame, &app, content_body, &mut idp_table),
+                Tab::AuditLog => ui::audit_log::render(frame, &app, content_body, &mut audit_table),
             }
 
             let hints: Vec<(&str, &str)> = match app.focus {
@@ -80,7 +102,7 @@ pub async fn run(mut app: App) -> io::Result<()> {
                         ("↑↓", "Navigate"),
                         ("n", "New"),
                         ("e", "Edit"),
-                        ("r", "Roles"),
+                        ("r", "Roles (M2M only)"),
                         ("d", "Delete"),
                         ("q", "Quit"),
                     ],
@@ -133,6 +155,12 @@ pub async fn run(mut app: App) -> io::Result<()> {
                         ("n", "New"),
                         ("e", "Edit"),
                         ("d", "Delete"),
+                        ("q", "Quit"),
+                    ],
+                    Tab::AuditLog => vec![
+                        ("Esc", "Back"),
+                        ("←→", "Switch tab"),
+                        ("↑↓", "Navigate"),
                         ("q", "Quit"),
                     ],
                 },
@@ -344,7 +372,10 @@ async fn handle_login_key(app: &mut App, code: KeyCode) {
             let client = app.client.clone();
             match client.login(&email, &password, &slug).await {
                 Ok(LoginResult::Token(token)) => {
-                    app.client.set_token(token);
+                    app.client.set_token(token.clone());
+                    let mut cfg = config_file::load();
+                    cfg.token = Some(token);
+                    let _ = config_file::save(&cfg);
                     app.mode = AppMode::Admin;
                     load_tenants(app).await;
                     check_health(app).await;
@@ -416,7 +447,10 @@ async fn handle_mfa_key(app: &mut App, key: KeyCode) {
             let client = app.client.clone();
             match client.mfa_challenge(&slug, &mfa_token, &otp_code).await {
                 Ok(token) => {
-                    app.client.set_token(token);
+                    app.client.set_token(token.clone());
+                    let mut cfg = config_file::load();
+                    cfg.token = Some(token);
+                    let _ = config_file::save(&cfg);
                     app.mode = AppMode::Admin;
                     load_tenants(app).await;
                     check_health(app).await;
@@ -1015,13 +1049,14 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
         // ── Tier 1: main tab navigation (only when NOT inside Settings) ──
         KeyCode::Left if !app.settings.entered => {
             app.tab = match app.tab {
-                Tab::Clients => Tab::IdentityProviders,
+                Tab::Clients => Tab::AuditLog,
                 Tab::Users => Tab::Clients,
                 Tab::Roles => Tab::Users,
                 Tab::Permissions => Tab::Roles,
                 Tab::Sessions => Tab::Permissions,
                 Tab::Settings => Tab::Sessions,
                 Tab::IdentityProviders => Tab::Settings,
+                Tab::AuditLog => Tab::IdentityProviders,
             };
             load_current_tab(app).await;
         }
@@ -1033,7 +1068,8 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
                 Tab::Permissions => Tab::Sessions,
                 Tab::Sessions => Tab::Settings,
                 Tab::Settings => Tab::IdentityProviders,
-                Tab::IdentityProviders => Tab::Clients,
+                Tab::IdentityProviders => Tab::AuditLog,
+                Tab::AuditLog => Tab::Clients,
             };
             load_current_tab(app).await;
         }
@@ -1077,6 +1113,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             Tab::Sessions => { if app.session_selected > 0 { app.session_selected -= 1; } }
             Tab::Settings => {}
             Tab::IdentityProviders => { if app.idp_selected > 0 { app.idp_selected -= 1; } }
+            Tab::AuditLog => { if app.audit_log_selected > 0 { app.audit_log_selected -= 1; } }
         },
         KeyCode::Down => match app.tab {
             Tab::Clients => { if app.client_selected + 1 < app.clients.len() { app.client_selected += 1; } }
@@ -1086,6 +1123,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             Tab::Sessions => { if app.session_selected + 1 < app.sessions.len() { app.session_selected += 1; } }
             Tab::Settings => {}
             Tab::IdentityProviders => { if app.idp_selected + 1 < app.identity_providers.len() { app.idp_selected += 1; } }
+            Tab::AuditLog => { if app.audit_log_selected + 1 < app.audit_log.len() { app.audit_log_selected += 1; } }
         },
         KeyCode::Char('n') => match app.tab {
             Tab::Clients => {
@@ -1128,6 +1166,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             }
             Tab::Sessions => {}
             Tab::Settings => {}
+            Tab::AuditLog => {}
             Tab::IdentityProviders => {
                 if app.active_tenant_id.is_some() {
                     app.modal = Modal::CreateIdp {
@@ -1185,6 +1224,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
             }
             Tab::Sessions => {}
             Tab::Settings => {}
+            Tab::AuditLog => {}
             Tab::IdentityProviders => {
                 if let Some(idp) = app.selected_idp() {
                     app.modal = Modal::EditIdp {
@@ -1203,7 +1243,13 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
         KeyCode::Char('r') => {
             if app.tab == Tab::Clients {
                 if let (Some(c), Some(tid)) = (app.selected_client().cloned(), app.active_tenant_id.clone()) {
-                    open_client_roles(app, c.id, c.name, tid).await;
+                    let is_m2m = c.grant_types.iter().any(|g| g == "client_credentials")
+                        && !c.grant_types.iter().any(|g| g == "authorization_code");
+                    if is_m2m {
+                        open_client_roles(app, c.id, c.name, tid).await;
+                    } else {
+                        app.set_status("Roles only available for M2M (Machine) clients");
+                    }
                 }
             }
         }
@@ -1251,6 +1297,7 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
                 }
             }
             Tab::Settings => {}
+            Tab::AuditLog => {}
             Tab::IdentityProviders => {
                 if let Some(idp) = app.selected_idp() {
                     app.modal = Modal::ConfirmDelete { id: idp.id.clone(), label: idp.provider.clone() };
@@ -1265,13 +1312,14 @@ async fn load_all(app: &mut App) {
     let Some(tid) = app.active_tenant_id.clone() else { return };
     let client = app.client.clone();
 
-    let (clients_r, users_r, roles_r, perms_r, sessions_r, idps_r) = tokio::join!(
+    let (clients_r, users_r, roles_r, perms_r, sessions_r, idps_r, audit_r) = tokio::join!(
         client.list_clients(&tid),
         client.list_users(&tid),
         client.list_roles(&tid),
         client.list_permissions(&tid),
         client.list_sessions(&tid),
         client.list_identity_providers(&tid),
+        client.list_audit_log(&tid),
     );
 
     match clients_r {
@@ -1298,6 +1346,10 @@ async fn load_all(app: &mut App) {
         Ok(list) => { app.idp_selected = app.idp_selected.min(list.len().saturating_sub(1)); app.identity_providers = list; }
         Err(e) => on_load_err(app, e, "IdP"),
     }
+    match audit_r {
+        Ok(list) => { app.audit_log_selected = app.audit_log_selected.min(list.len().saturating_sub(1)); app.audit_log = list; }
+        Err(e) => on_load_err(app, e, "AuditLog"),
+    }
 }
 
 async fn load_current_tab(app: &mut App) {
@@ -1310,6 +1362,7 @@ async fn load_current_tab(app: &mut App) {
         Tab::Sessions => load_sessions(app, tid).await,
         Tab::Settings => load_settings(app, tid).await,
         Tab::IdentityProviders => load_idps(app, tid).await,
+        Tab::AuditLog => load_audit_log(app, tid).await,
     }
 }
 
@@ -1699,6 +1752,9 @@ async fn perform_save_client_roles(
 }
 
 fn reset_to_login(app: &mut App, msg: &str) {
+    let mut cfg = config_file::load();
+    cfg.token = None;
+    let _ = config_file::save(&cfg);
     app.client = crate::api::Client::new(app.client.base_url.clone());
     app.mode = AppMode::Login {
         email: String::new(),
@@ -1771,6 +1827,17 @@ async fn load_idps(app: &mut App, tenant_id: String) {
         Err(e) => on_load_err(app, e, "IdP"),
     }
     app.idps_loading = false;
+}
+
+async fn load_audit_log(app: &mut App, tenant_id: String) {
+    app.audit_log = vec![];
+    app.audit_log_selected = 0;
+    app.audit_log_loading = true;
+    match app.client.list_audit_log(&tenant_id).await {
+        Ok(list) => { app.audit_log = list; app.clear_status(); }
+        Err(e) => on_load_err(app, e, "AuditLog"),
+    }
+    app.audit_log_loading = false;
 }
 
 async fn perform_create_idp(
@@ -2016,6 +2083,7 @@ async fn perform_delete(app: &mut App, id: String) {
         Tab::Sessions => app.client.delete_session(&tid, &id).await
             .map(|_| "Session revoked"),
         Tab::Settings => return,
+        Tab::AuditLog => return,
         Tab::IdentityProviders => app.client.delete_identity_provider(&tid, &id).await
             .map(|_| "Identity provider deleted"),
     };
