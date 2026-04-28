@@ -1,4 +1,3 @@
-use arboard;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, KeyCode, KeyModifiers},
     execute,
@@ -682,13 +681,11 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                     field = (field + 1) % 2;
                     app.modal = Modal::CreateTenant { name, slug, field };
                 }
-                KeyCode::Enter => {
-                    if !name.is_empty() && !slug.is_empty() {
-                        let n = name.clone();
-                        let s = slug.clone();
-                        app.modal = Modal::None;
-                        perform_create_tenant(app, n, s).await;
-                    }
+                KeyCode::Enter if !name.is_empty() && !slug.is_empty() => {
+                    let n = name.clone();
+                    let s = slug.clone();
+                    app.modal = Modal::None;
+                    perform_create_tenant(app, n, s).await;
                 }
                 KeyCode::Backspace => {
                     if field == 0 {
@@ -807,13 +804,11 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !email.is_empty() && !password.is_empty() {
-                        let e = email.clone();
-                        let p = password.clone();
-                        app.modal = Modal::None;
-                        perform_create_user(app, e, p).await;
-                    }
+                KeyCode::Enter if !email.is_empty() && !password.is_empty() => {
+                    let e = email.clone();
+                    let p = password.clone();
+                    app.modal = Modal::None;
+                    perform_create_user(app, e, p).await;
                 }
                 KeyCode::Backspace => {
                     if field == 0 {
@@ -858,13 +853,11 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !name.is_empty() {
-                        let n = name.clone();
-                        let d = description.clone();
-                        app.modal = Modal::None;
-                        perform_create_role(app, n, d).await;
-                    }
+                KeyCode::Enter if !name.is_empty() => {
+                    let n = name.clone();
+                    let d = description.clone();
+                    app.modal = Modal::None;
+                    perform_create_role(app, n, d).await;
                 }
                 KeyCode::Backspace => {
                     if field == 0 {
@@ -903,9 +896,7 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
             match code {
                 KeyCode::Esc => app.modal = Modal::None,
                 KeyCode::Up => {
-                    if selected > 0 {
-                        selected -= 1;
-                    }
+                    selected = selected.saturating_sub(1);
                     app.modal = Modal::ClientRoles {
                         client_id,
                         client_name,
@@ -983,18 +974,16 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !name.is_empty() {
-                        let id2 = id.clone();
-                        let n = name.clone();
-                        let ru = redirect_uris.clone();
-                        let sc = scopes.clone();
-                        let att = access_token_ttl.clone();
-                        let rtt = refresh_token_ttl.clone();
-                        let ct = client_type;
-                        app.modal = Modal::None;
-                        perform_edit_client(app, id2, n, ru, sc, att, rtt, ct).await;
-                    }
+                KeyCode::Enter if !name.is_empty() => {
+                    let id2 = id.clone();
+                    let n = name.clone();
+                    let ru = redirect_uris.clone();
+                    let sc = scopes.clone();
+                    let att = access_token_ttl.clone();
+                    let rtt = refresh_token_ttl.clone();
+                    let ct = client_type;
+                    app.modal = Modal::None;
+                    perform_edit_client(app, id2, n, ru, sc, att, rtt, ct).await;
                 }
                 KeyCode::Backspace => {
                     match field {
@@ -1071,16 +1060,18 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !provider.is_empty() && !client_id.is_empty() && !client_secret.is_empty() {
-                        let prov = provider.clone();
-                        let cid = client_id.clone();
-                        let cs = client_secret.clone();
-                        let ru = redirect_url.clone();
-                        let sc = scopes.clone();
-                        app.modal = Modal::None;
-                        perform_create_idp(app, prov, cid, cs, ru, sc).await;
-                    }
+                KeyCode::Enter
+                    if !provider.is_empty()
+                        && !client_id.is_empty()
+                        && !client_secret.is_empty() =>
+                {
+                    let prov = provider.clone();
+                    let cid = client_id.clone();
+                    let cs = client_secret.clone();
+                    let ru = redirect_url.clone();
+                    let sc = scopes.clone();
+                    app.modal = Modal::None;
+                    perform_create_idp(app, prov, cid, cs, ru, sc).await;
                 }
                 KeyCode::Backspace => {
                     match field {
@@ -1260,9 +1251,7 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                     };
                 }
                 KeyCode::Up if field == 3 => {
-                    if role_selected > 0 {
-                        role_selected -= 1;
-                    }
+                    role_selected = role_selected.saturating_sub(1);
                     // Recalculate permissions from currently checked roles
                     app.modal = Modal::EditUser {
                         id,
@@ -1408,9 +1397,7 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                     };
                 }
                 KeyCode::Up if field == 2 => {
-                    if perm_selected > 0 {
-                        perm_selected -= 1;
-                    }
+                    perm_selected = perm_selected.saturating_sub(1);
                     app.modal = Modal::EditRole {
                         id,
                         name,
@@ -1446,15 +1433,13 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         perm_selected,
                     };
                 }
-                KeyCode::Enter if field != 2 => {
-                    if !name.is_empty() {
-                        let id2 = id.clone();
-                        let n = name.clone();
-                        let d = description.clone();
-                        let perms = all_permissions.clone();
-                        app.modal = Modal::None;
-                        perform_edit_role(app, id2, n, d, perms).await;
-                    }
+                KeyCode::Enter if field != 2 && !name.is_empty() => {
+                    let id2 = id.clone();
+                    let n = name.clone();
+                    let d = description.clone();
+                    let perms = all_permissions.clone();
+                    app.modal = Modal::None;
+                    perform_edit_role(app, id2, n, d, perms).await;
                 }
                 KeyCode::Enter if field == 2 => {
                     let id2 = id.clone();
@@ -1527,13 +1512,11 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !name.is_empty() {
-                        let n = name.clone();
-                        let d = description.clone();
-                        app.modal = Modal::None;
-                        perform_create_permission(app, n, d).await;
-                    }
+                KeyCode::Enter if !name.is_empty() => {
+                    let n = name.clone();
+                    let d = description.clone();
+                    app.modal = Modal::None;
+                    perform_create_permission(app, n, d).await;
                 }
                 KeyCode::Backspace => {
                     if field == 0 {
@@ -1580,14 +1563,12 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
                         field,
                     };
                 }
-                KeyCode::Enter => {
-                    if !name.is_empty() {
-                        let id2 = id.clone();
-                        let n = name.clone();
-                        let d = description.clone();
-                        app.modal = Modal::None;
-                        perform_edit_permission(app, id2, n, d).await;
-                    }
+                KeyCode::Enter if !name.is_empty() => {
+                    let id2 = id.clone();
+                    let n = name.clone();
+                    let d = description.clone();
+                    app.modal = Modal::None;
+                    perform_edit_permission(app, id2, n, d).await;
                 }
                 KeyCode::Backspace => {
                     if field == 0 {
@@ -1644,15 +1625,11 @@ async fn handle_key(app: &mut App, code: KeyCode, _mods: KeyModifiers) {
 
 async fn handle_sidebar_key(app: &mut App, code: KeyCode) {
     match code {
-        KeyCode::Up => {
-            if app.tenant_selected > 0 {
-                app.tenant_selected -= 1;
-            }
+        KeyCode::Up if app.tenant_selected > 0 => {
+            app.tenant_selected -= 1;
         }
-        KeyCode::Down => {
-            if app.tenant_selected + 1 < app.tenants.len() {
-                app.tenant_selected += 1;
-            }
+        KeyCode::Down if app.tenant_selected + 1 < app.tenants.len() => {
+            app.tenant_selected += 1;
         }
         KeyCode::Enter | KeyCode::Right => {
             if let Some(t) = app.selected_tenant() {
@@ -1675,10 +1652,8 @@ async fn handle_sidebar_key(app: &mut App, code: KeyCode) {
                 load_all(app).await;
             }
         }
-        KeyCode::Tab => {
-            if app.active_tenant_id.is_some() {
-                app.focus = Focus::Content;
-            }
+        KeyCode::Tab if app.active_tenant_id.is_some() => {
+            app.focus = Focus::Content;
         }
         KeyCode::Char('n') => {
             app.modal = Modal::CreateTenant {
@@ -1749,11 +1724,9 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
         KeyCode::Enter if app.settings.entered => {
             save_settings_section(app).await;
         }
-        KeyCode::Backspace if app.settings.entered => {
-            if !handle_settings_backspace(app) {
-                // Field was empty (or toggle) — exit to Tier 1
-                app.settings.entered = false;
-            }
+        KeyCode::Backspace if app.settings.entered && !handle_settings_backspace(app) => {
+            // Field was empty (or toggle) — exit to Tier 1
+            app.settings.entered = false;
         }
         KeyCode::Char(c) if app.settings.entered => {
             handle_settings_char(app, c);
@@ -1959,37 +1932,33 @@ async fn handle_content_key(app: &mut App, code: KeyCode) {
                 }
             }
         },
-        KeyCode::Char('r') => {
-            if app.tab == Tab::Clients {
-                if let (Some(c), Some(tid)) =
-                    (app.selected_client().cloned(), app.active_tenant_id.clone())
-                {
-                    let is_m2m = c.grant_types.iter().any(|g| g == "client_credentials")
-                        && !c.grant_types.iter().any(|g| g == "authorization_code");
-                    if is_m2m {
-                        open_client_roles(app, c.id, c.name, tid).await;
-                    } else {
-                        app.set_status("Roles only available for M2M (Machine) clients");
-                    }
+        KeyCode::Char('r') if app.tab == Tab::Clients => {
+            if let (Some(c), Some(tid)) =
+                (app.selected_client().cloned(), app.active_tenant_id.clone())
+            {
+                let is_m2m = c.grant_types.iter().any(|g| g == "client_credentials")
+                    && !c.grant_types.iter().any(|g| g == "authorization_code");
+                if is_m2m {
+                    open_client_roles(app, c.id, c.name, tid).await;
+                } else {
+                    app.set_status("Roles only available for M2M (Machine) clients");
                 }
             }
         }
-        KeyCode::Char('m') => {
-            if app.tab == Tab::Users {
-                if let (Some(u), Some(tid)) =
-                    (app.selected_user().cloned(), app.active_tenant_id.clone())
-                {
-                    if u.mfa_enabled {
-                        match app.client.admin_disable_user_mfa(&tid, &u.id).await {
-                            Ok(_) => {
-                                app.set_status(format!("MFA disabled for {}", u.email));
-                                load_users(app, tid).await;
-                            }
-                            Err(e) => app.set_status(format!("Error: {e}")),
+        KeyCode::Char('m') if app.tab == Tab::Users => {
+            if let (Some(u), Some(tid)) =
+                (app.selected_user().cloned(), app.active_tenant_id.clone())
+            {
+                if u.mfa_enabled {
+                    match app.client.admin_disable_user_mfa(&tid, &u.id).await {
+                        Ok(_) => {
+                            app.set_status(format!("MFA disabled for {}", u.email));
+                            load_users(app, tid).await;
                         }
-                    } else {
-                        app.set_status("MFA is not enabled for this user");
+                        Err(e) => app.set_status(format!("Error: {e}")),
                     }
+                } else {
+                    app.set_status("MFA is not enabled for this user");
                 }
             }
         }
@@ -2631,6 +2600,7 @@ fn on_load_err(app: &mut App, e: crate::api::ApiError, ctx: &str) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn perform_edit_client(
     app: &mut App,
     id: String,
@@ -3153,10 +3123,8 @@ fn handle_settings_char(app: &mut App, c: char) {
     }
     let s = &mut app.settings;
     match s.section {
-        0 => {
-            if s.field == 0 {
-                s.policy_min_length.push(c);
-            }
+        0 if s.field == 0 => {
+            s.policy_min_length.push(c);
         }
         1 => match s.field {
             0 => s.lockout_max_attempts.push(c),

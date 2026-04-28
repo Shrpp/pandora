@@ -47,6 +47,7 @@ pub async fn get(db: &DatabaseConnection, tenant_id: Uuid) -> Result<TenantSetti
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert(
     db: &DatabaseConnection,
     tenant_id: Uuid,

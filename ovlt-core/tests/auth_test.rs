@@ -264,7 +264,7 @@ async fn test_oauth_state_roundtrip() {
 
 #[tokio::test]
 async fn test_lockout_and_clear() {
-    let (db, cfg, tenant_id, tenant_key) = setup().await;
+    let (db, _cfg, tenant_id, tenant_key) = setup().await;
     let email = "lockout_test@ovlt.dev";
     let lookup = hefesto::hash_for_lookup(email, &tenant_key).expect("hash");
 

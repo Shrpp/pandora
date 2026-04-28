@@ -40,7 +40,7 @@ impl StatefulTable {
         let rows: Vec<Row> = rows
             .into_iter()
             .map(|r| {
-                let cells = r.into_iter().map(|c| Cell::from(c));
+                let cells = r.into_iter().map(Cell::from);
                 Row::new(cells).height(1)
             })
             .collect();

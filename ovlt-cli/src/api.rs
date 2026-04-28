@@ -184,6 +184,7 @@ impl Client {
         self.check(resp).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_client(
         &self,
         tenant_id: &str,
@@ -213,6 +214,7 @@ impl Client {
         self.check(resp).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_client(
         &self,
         tenant_id: &str,
@@ -349,6 +351,7 @@ impl Client {
         self.check(resp).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_identity_provider(
         &self,
         tenant_id: &str,

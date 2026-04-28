@@ -114,8 +114,8 @@ pub fn render_edit_user(
     field: usize,
     role_selected: usize,
 ) {
-    let roles_visible = all_roles.len().min(5).max(1) as u16;
-    let perms_visible = permissions.len().min(4).max(1) as u16;
+    let roles_visible = all_roles.len().clamp(1, 5) as u16;
+    let perms_visible = permissions.len().clamp(1, 4) as u16;
     let height = 3 + 3 + 2 + 1 + roles_visible + 1 + 1 + perms_visible + 1 + 2;
     let area = centered_rect(66, height, frame.area());
     frame.render_widget(Clear, area);
@@ -313,7 +313,7 @@ pub fn render_edit_role(
     field: usize,
     perm_selected: usize,
 ) {
-    let perms_visible = all_permissions.len().min(6).max(1) as u16;
+    let perms_visible = all_permissions.len().clamp(1, 6) as u16;
     let height = 3 + 3 + 1 + perms_visible + 1 + 1 + 2; // name+desc+header+perms+spacer+hints+borders
     let area = centered_rect(60, height, frame.area());
     frame.render_widget(Clear, area);

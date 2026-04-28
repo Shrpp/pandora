@@ -58,7 +58,7 @@ pub fn require_admin(
             .and_then(|v| v.to_str().ok())
             .and_then(|s| Uuid::parse_str(s).ok());
 
-        if header_tid.map_or(true, |h| h == token_tid) {
+        if header_tid.is_none_or(|h| h == token_tid) {
             return Ok(Some(token_tid));
         }
     }

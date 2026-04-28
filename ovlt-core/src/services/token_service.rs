@@ -37,6 +37,7 @@ pub struct Claims {
     pub resource_access: HashMap<String, RealmAccess>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn generate_access_token(
     user_id: Uuid,
     tenant_id: Uuid,
