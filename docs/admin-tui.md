@@ -6,19 +6,35 @@ The `ovlt` binary is a terminal UI for managing OVLT. It connects to a running O
 
 ## Install
 
+Download from [GitHub Releases](https://github.com/shrpp/ovlt/releases/latest).
+
+**macOS**
 ```bash
-# macOS ARM (M1/M2/M3)
-curl -Lo ovlt https://github.com/shrpp/ovlt/releases/download/latest-main/ovlt-macos-aarch64
-chmod +x ovlt && sudo mv ovlt /usr/local/bin/
+# M1/M2/M3
+curl -Lo ovlt https://github.com/shrpp/ovlt/releases/latest/download/ovlt-aarch64-apple-darwin
+# Intel
+curl -Lo ovlt https://github.com/shrpp/ovlt/releases/latest/download/ovlt-x86_64-apple-darwin
 
-# macOS Intel
-curl -Lo ovlt https://github.com/shrpp/ovlt/releases/download/latest-main/ovlt-macos-x86_64
-chmod +x ovlt && sudo mv ovlt /usr/local/bin/
-
-# Linux x86_64
-curl -Lo ovlt https://github.com/shrpp/ovlt/releases/download/latest-main/ovlt-linux-x86_64
+xattr -dr com.apple.quarantine ovlt   # required — binary is unsigned in alpha
 chmod +x ovlt && sudo mv ovlt /usr/local/bin/
 ```
+
+**Linux**
+```bash
+# x86_64
+curl -Lo ovlt https://github.com/shrpp/ovlt/releases/latest/download/ovlt-x86_64-unknown-linux-gnu
+# ARM64
+curl -Lo ovlt https://github.com/shrpp/ovlt/releases/latest/download/ovlt-aarch64-unknown-linux-gnu
+
+chmod +x ovlt && sudo mv ovlt /usr/local/bin/
+```
+
+**Windows**
+```powershell
+curl -Lo ovlt.exe https://github.com/shrpp/ovlt/releases/latest/download/ovlt-x86_64-pc-windows-msvc.exe
+.\ovlt.exe --url http://localhost:3000
+```
+> Windows SmartScreen will show a warning because the binary is not yet code-signed. This is expected for alpha builds. Click **More info → Run anyway** to proceed.
 
 ## Connect
 
