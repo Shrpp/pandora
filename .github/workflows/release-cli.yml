@@ -48,20 +48,19 @@ jobs:
         run: cargo install cross
 
       - name: Build
-        working-directory: ovlt-cli
         shell: bash
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
+            cross build --release --bin ovlt --target ${{ matrix.target }}
           else
-            cargo build --release --target ${{ matrix.target }}
+            cargo build --release --bin ovlt --target ${{ matrix.target }}
           fi
 
       - name: Package binary
         shell: bash
         run: |
           ext="${{ matrix.binary == 'ovlt.exe' && '.exe' || '' }}"
-          cp "ovlt-cli/target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" \
              "ovlt-${{ matrix.target }}${ext}"
 
       - uses: actions/upload-artifact@v4
