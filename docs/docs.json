@@ -20,32 +20,32 @@
   ],
   "topbarCtaButton": {
     "name": "Get Started",
-    "url": "/docs/getting-started"
+    "url": "/getting-started"
   },
   "navigation": {
     "groups": [
       {
         "group": "Get Started",
         "pages": [
-          "docs/introduction",
-          "docs/getting-started",
-          "docs/configuration"
+          "introduction",
+          "getting-started",
+          "configuration"
         ]
       },
       {
         "group": "Guides",
         "pages": [
-          "docs/architecture",
-          "docs/security",
-          "docs/m2m",
-          "docs/mfa",
-          "docs/admin-tui"
+          "architecture",
+          "security",
+          "m2m",
+          "mfa",
+          "admin-tui"
         ]
       },
       {
         "group": "API Reference",
         "pages": [
-          "docs/api-reference"
+          "api-reference"
         ]
       }
     ]
