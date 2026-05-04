@@ -1,0 +1,55 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "OVLT",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#00d4ff",
+    "light": "#38e8ff",
+    "dark": "#00a8cc"
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/shrpp/ovlt"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "/getting-started"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "getting-started",
+          "configuration"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "architecture",
+          "security",
+          "m2m",
+          "mfa",
+          "admin-tui"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api-reference"
+        ]
+      }
+    ]
+  },
+  "footerSocials": {
+    "github": "https://github.com/shrpp/ovlt"
+  }
+}
